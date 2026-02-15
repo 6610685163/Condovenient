@@ -40,6 +40,7 @@ dependencies:
   firebase_core: ^3.0.0 # สำหรับ Firebase
   firebase_auth: ^5.0.0 # สำหรับ Authentication
   google_sign_in: ^6.2.1 # สำหรับปุ่ม Google Sign In
+  flutter_facebook_auth: ^7.0.0
 
 dev_dependencies:
   flutter_test:

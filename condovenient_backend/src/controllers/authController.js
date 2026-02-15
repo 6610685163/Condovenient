@@ -113,6 +113,41 @@ exports.googleLogin = async (req, res) => {
     }
 };
 
+exports.facebookLogin = async (req, res) => {
+    const { token } = req.body;
+    try {
+        // Firebase Admin SDK จะตรวจสอบ Token ไม่ว่าจะมาจาก Google หรือ Facebook
+        const decodedToken = await admin.auth().verifyIdToken(token);
+        const { email, uid, name } = decodedToken;
+
+        // บางครั้ง Facebook ไม่ส่ง Email มา (ถ้า User ไม่ได้ verify) ให้ใช้ UID แทน
+        const username = email || uid;
+
+        let userResult = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+        let user = userResult.rows[0];
+
+        if (!user) {
+            // สมัครสมาชิกใหม่
+            const randomPassword = Math.random().toString(36).slice(-8);
+            const newUser = await pool.query(
+                'INSERT INTO users (username, password, name, role) VALUES ($1, $2, $3, $4) RETURNING *',
+                [username, randomPassword, name || 'Facebook User', 'resident']
+            );
+            user = newUser.rows[0];
+        }
+
+        res.json({
+            success: true,
+            message: 'Facebook Login สำเร็จ',
+            user: { id: user.user_id, name: user.name, role: user.role }
+        });
+
+    } catch (err) {
+        console.error('Facebook Login Error:', err.message);
+        res.status(401).json({ success: false, message: 'Invalid Token' });
+    }
+};
+
 exports.getAllUsers = async (req, res) => {
     try {
         // ดึง id, username, name, role (ไม่เอา password เพราะเป็นความลับ)

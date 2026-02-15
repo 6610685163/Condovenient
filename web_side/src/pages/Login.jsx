@@ -1,68 +1,111 @@
-// src/pages/Login.jsx
+import { useState } from 'react'; // เพิ่ม useState
 import { Building2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios'; // เพิ่ม axios
+import { auth, googleProvider, facebookProvider } from '../firebase'; // เรียก config ที่สร้างไว้
+import { signInWithPopup } from 'firebase/auth';
 
 const Login = () => {
     const navigate = useNavigate();
+    
+    // State สำหรับเก็บค่า input
+    const [formData, setFormData] = useState({
+        username: '', // Backend ใช้ username ไม่ใช่ email ในการ login ปกติ
+        password: ''
+    });
 
-    const handleLogin = (e) => {
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    // 1. ฟังก์ชัน Login ปกติ (Username/Password)
+    const handleLogin = async (e) => {
         e.preventDefault();
+        try {
+            // ยิงไปที่ Backend Port 3000
+            const response = await axios.post('http://localhost:3000/api/auth/login', {
+                username: formData.username,
+                password: formData.password
+            });
 
-        localStorage.setItem("user_token", "demo-token-1234");
-
-        navigate("/");
+            if (response.data.success) {
+                alert('Login สำเร็จ!');
+                // เก็บข้อมูล User ลง LocalStorage (หรือ Context)
+                localStorage.setItem("user_token", JSON.stringify(response.data.user));
+                navigate("/");
+            }
+        } catch (error) {
+            console.error(error);
+            alert(error.response?.data?.message || 'Login ผิดพลาด');
+        }
     }
+
+    // 2. ฟังก์ชัน Social Login (ใช้ได้ทั้ง Google และ Facebook)
+    const handleSocialLogin = async (provider, endpoint) => {
+        try {
+            const result = await signInWithPopup(auth, provider);
+            const token = await result.user.getIdToken(); // ขอ Token จาก Firebase
+
+            // ส่ง Token ไปให้ Backend ตรวจสอบ
+            const response = await axios.post(`http://localhost:3000/api/auth/${endpoint}`, {
+                token: token
+            });
+
+            if (response.data.success) {
+                alert(`${response.data.message}`);
+                localStorage.setItem("user_token", JSON.stringify(response.data.user));
+                navigate("/");
+            }
+        } catch (error) {
+            console.error("Social Login Error", error);
+            alert('เกิดข้อผิดพลาดในการเชื่อมต่อกับ Social Media');
+        }
+    };
 
     return (
         <div className="min-h-screen flex bg-white">
-            {/* 1. ส่วนรูปภาพ (ซ้าย) - พื้นหลังสีฟ้า */}
+            {/* ... (ส่วนรูปภาพด้านซ้าย เหมือนเดิม ไม่ต้องแก้) ... */}
             <div className="hidden lg:flex w-1/2 bg-blue-600 items-center justify-center relative overflow-hidden">
-                {/* ก้อนสีเหลืองตกแต่ง (จำลอง Blob) */}
-                <div className="absolute w-[500px] h-[500px] bg-yellow-400 rounded-full blur-3xl opacity-50 mix-blend-multiply filter top-0 -left-20 animate-blob"></div>
-                <div className="absolute w-[500px] h-[500px] bg-yellow-400 rounded-full blur-3xl opacity-50 mix-blend-multiply filter bottom-0 -right-20 animate-blob animation-delay-2000"></div>
-
-                {/* รูปตึก (ใส่ Image Tag จริงๆ ตรงนี้ได้เลย) */}
-                <div className="relative z-10 w-3/4 h-3/4 bg-gray-300 rounded-3xl overflow-hidden shadow-2xl">
-                    <img
-                        src="https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?q=80&w=1000&auto=format&fit=crop"
-                        alt="Condo"
-                        className="w-full h-full object-cover"
-                    />
+                 {/* คงโค้ดเดิมไว้ */}
+                 <div className="absolute w-[500px] h-[500px] bg-yellow-400 rounded-full blur-3xl opacity-50 mix-blend-multiply filter top-0 -left-20 animate-blob"></div>
+                 <div className="absolute w-[500px] h-[500px] bg-yellow-400 rounded-full blur-3xl opacity-50 mix-blend-multiply filter bottom-0 -right-20 animate-blob animation-delay-2000"></div>
+                 <div className="relative z-10 w-3/4 h-3/4 bg-gray-300 rounded-3xl overflow-hidden shadow-2xl">
+                    <img src="https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?q=80&w=1000&auto=format&fit=crop" alt="Condo" className="w-full h-full object-cover"/>
                 </div>
             </div>
 
-            {/* 2. ส่วนฟอร์ม (ขวา) */}
+            {/* ส่วนฟอร์ม (ขวา) */}
             <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
                 <div className="w-full max-w-md space-y-8">
-
-                    {/* Logo & Header */}
+                    {/* Header เหมือนเดิม */}
                     <div className="text-left">
                         <div className="flex items-center gap-2 mb-6">
-                            <div className="p-2 bg-blue-600 rounded-lg text-white">
-                                <Building2 size={24} />
-                            </div>
+                            <div className="p-2 bg-blue-600 rounded-lg text-white"><Building2 size={24} /></div>
                             <span className="text-xl font-bold">Condovenient</span>
                         </div>
                         <h2 className="text-3xl font-bold text-gray-900">Welcome Back!</h2>
                     </div>
 
-                    {/* Form */}
                     <form className="mt-8 space-y-6" onSubmit={handleLogin}>
                         <div className="space-y-4">
                             <div>
-                                <label className="text-sm font-medium text-gray-500">Email</label>
+                                <label className="text-sm font-medium text-gray-500">Email / Username</label>
                                 <input
-                                    type="email"
-                                    placeholder="Enter your Email here"
-                                    className="w-full mt-1 px-4 py-3 bg-gray-100 border-transparent rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                    type="text"
+                                    name="username" // ต้องตรงกับ state
+                                    onChange={handleChange}
+                                    placeholder="Enter your Email or Username"
+                                    className="w-full mt-1 px-4 py-3 bg-gray-100 border-transparent rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                                 />
                             </div>
                             <div>
                                 <label className="text-sm font-medium text-gray-500">Password</label>
                                 <input
                                     type="password"
-                                    placeholder="Enter your Password here"
-                                    className="w-full mt-1 px-4 py-3 bg-gray-100 border-transparent rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                    name="password" // ต้องตรงกับ state
+                                    onChange={handleChange}
+                                    placeholder="Enter your Password"
+                                    className="w-full mt-1 px-4 py-3 bg-gray-100 border-transparent rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                                 />
                             </div>
                         </div>
@@ -73,9 +116,7 @@ const Login = () => {
 
                         <p className="text-center text-sm text-gray-600">
                             Don't have an account?
-                            <Link to="/register" className="ml-1 text-yellow-500 font-bold hover:underline">
-                                Register
-                            </Link>
+                            <Link to="/register" className="ml-1 text-yellow-500 font-bold hover:underline">Register</Link>
                         </p>
 
                         <div className="relative my-6">
@@ -84,11 +125,22 @@ const Login = () => {
                         </div>
 
                         <div className="flex gap-4">
-                            <button type="button" className="w-1/2 py-2 px-4 border border-gray-300 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
+                            {/* ปุ่ม Google */}
+                            <button 
+                                type="button" 
+                                onClick={() => handleSocialLogin(googleProvider, 'google-login')}
+                                className="w-1/2 py-2 px-4 border border-gray-300 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors"
+                            >
                                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
                                 <span className="text-sm font-medium text-gray-700">Google</span>
                             </button>
-                            <button type="button" className="w-1/2 py-2 px-4 border border-gray-300 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
+                            
+                            {/* ปุ่ม Facebook */}
+                            <button 
+                                type="button" 
+                                onClick={() => handleSocialLogin(facebookProvider, 'facebook-login')}
+                                className="w-1/2 py-2 px-4 border border-gray-300 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors"
+                            >
                                 <img src="https://www.svgrepo.com/show/475647/facebook-color.svg" className="w-5 h-5" alt="Facebook" />
                                 <span className="text-sm font-medium text-gray-700">Facebook</span>
                             </button>
