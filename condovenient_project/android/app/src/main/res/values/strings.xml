@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Condovenient</string>
+    <string name="facebook_app_id">998064293394551</string>
+    <string name="fb_login_protocol_scheme">fb998064293394551</string>
+    <string name="facebook_client_token">bc5ba02c065355c28e151eb1f1414f6e</string>
+</resources>

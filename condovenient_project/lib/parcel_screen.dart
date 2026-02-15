@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 class ParcelScreen extends StatelessWidget {
+  const ParcelScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

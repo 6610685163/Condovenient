@@ -1,0 +1,17 @@
+**/node_modules/
+**/condovenient_backend/src/config/firebase-key.json
+**/.env
+
+**/condovenient_project/.dart_tool/
+**/condovenient_project/.flutter-plugins
+**/condovenient_project/.flutter-plugins-dependencies
+**/condovenient_project/.packages
+**/condovenient_project/build/
+
+**/*.log
+**/.DS_Store
+**/*.json
+!**/package.json
+!**/package-lock.json
+!**/pubspec.yaml
+!**/pubspec.lock
