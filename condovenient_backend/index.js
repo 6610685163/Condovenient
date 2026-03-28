@@ -11,6 +11,18 @@ app.use(express.json()); // เรียกครั้งเดียวพอ�
 const authRoutes = require('./src/routes/authRoutes');
 app.use('/api/auth', authRoutes);
 
+// paymentRoutes 
+const paymentRoutes = require('./src/routes/paymentRoutes');
+app.use('/api/payments', paymentRoutes);
+
+// repairRoutes 
+const repairRoutes = require('./src/routes/repairRoutes');
+app.use('/api/repairs', repairRoutes);
+
+// visitorRoutes
+const visitorRoutes = require('./src/routes/visitorRoutes');
+app.use('/api/visitors', visitorRoutes);
+
 // 3. Route สำหรับทดสอบ
 app.get('/', (req, res) => {
     res.send('✅ Condovenient Backend is Running!');
@@ -20,3 +32,7 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
     console.log(`🚀 Server is running on port ${PORT}`);
 });
+
+// 
+const paymentRoutes = require('./src/routes/paymentRoutes');
+app.use('/api/payments', paymentRoutes);
