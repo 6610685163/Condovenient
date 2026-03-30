@@ -134,7 +134,7 @@
 | 6610685064 | ฉัตรชัย สีคราม             | Backend Developer |
 | 6610685130 | ชิติพัทธ์ ตากตำรงค์กุล       | Project Manager & Frontend Developer |
 | 6610685163 | ธนบดี สุดแดน             | Backend Developer |
-| 6610685361 | เสฎฐพัชร ญาณพัฒน์สร      | Backend Developer |
+| 6610685361 | เสฎฐพัชร ญาณพัฒน์สร      | Backend & Database Engineer |
 
 ---
 
@@ -146,11 +146,11 @@
 4. [Presentation Slide for Week 4 GUI & CLI](https://www.canva.com/design/DAG_5phXnt4/Bjl36ShquvO2duLYC4grOg/view?utm_content=DAG_5phXnt4&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h79ed3928ff)
 5. [Presentation Slide for Week 5 Mapping & Facade](https://www.canva.com/design/DAHAqaXcgHg/TXma4wYU04RRrjVmf9jwjQ/view?utm_content=DAHAqaXcgHg&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=hb8cfb31952)
 6. [Presentation Slide for Week 6 Implement User / Login](https://www.canva.com/design/DAHBZGMB-Dg/04PgYhR3vkNhaxhjUTm5CQ/view?utm_content=DAHBZGMB-Dg&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=hd5be665360)
-
+7. [Presentation Slide for Week 6 Future Plans](https://canva.link/8tel1knf3mwrjtu)
 ---
 
 ## Presentation History
 
-- February 2, 2026 (Presentation Slide 1 - 5)
+- February 2, 2026 (Presentation Slide 1 - 4)
 
 > *Condovenient – Smart Management for Smart Communities*
