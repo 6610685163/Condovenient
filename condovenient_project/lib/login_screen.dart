@@ -1,15 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  final String backendUrl = 'http://10.0.2.2:3000';
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // ตัวควบคุมข้อความ
   final _roomController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
@@ -21,36 +27,133 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // ฟังก์ชัน Login ปกติ
-  void _handleLogin() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (mounted) {
-      setState(() => _isLoading = false);
-      // เปลี่ยนหน้าไปยัง HomeScreen
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
+  // --- ฟังก์ชันช่วยจัดการผลลัพธ์จาก Backend ---
+  void _processLoginResponse(http.Response response, String provider) {
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200 && data['success']) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$provider Login สำเร็จ: ${data['user']['name']}'),
+          ),
+        );
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HomeScreen(
+              userName: data['user']['name'] ?? 'User',
+              userRole: data['user']['role'] ?? 'Resident',
+            ),
+          ),
+        );
+      }
+    } else {
+      _showError(data['message'] ?? 'เข้าสู่ระบบไม่สำเร็จ');
     }
   }
 
-  // ฟังก์ชัน Login ด้วย Google (Mock)
-  void _handleGoogleLogin() async {
-     // ทำเหมือนข้างบนเลยครับ
-    setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 2));
-
+  void _showError(String message) {
     if (mounted) {
-      setState(() => _isLoading = false);
-      Navigator.pushReplacement(
+      ScaffoldMessenger.of(
         context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      ).showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
+  // 1. ฟังก์ชัน Login ปกติ
+  void _handleLogin() async {
+    if (_roomController.text.isEmpty || _passwordController.text.isEmpty) {
+      _showError('กรุณากรอกเลขห้องและรหัสผ่าน');
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final response = await http.post(
+        Uri.parse('${widget.backendUrl}/api/auth/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'username': _roomController.text,
+          'password': _passwordController.text,
+        }),
       );
+      _processLoginResponse(response, 'ปกติ');
+    } catch (e) {
+      _showError('เกิดข้อผิดพลาด: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // 2. ฟังก์ชัน Login ด้วย Google
+  void _handleGoogleLogin() async {
+    setState(() => _isLoading = true);
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      final UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithCredential(credential);
+      final String? idToken = await userCredential.user?.getIdToken();
+
+      if (idToken != null) {
+        final response = await http.post(
+          Uri.parse('${widget.backendUrl}/api/auth/google-login'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'token': idToken}),
+        );
+        _processLoginResponse(response, 'Google');
+      }
+    } catch (e) {
+      _showError('Google Login Error: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // 3. ฟังก์ชัน Login ด้วย Facebook (แก้ไขส่วนการแลก Token)
+  void _handleFacebookLogin() async {
+    setState(() => _isLoading = true);
+    try {
+      final LoginResult result = await FacebookAuth.instance.login(
+        permissions: ['public_profile', 'email'],
+      );
+
+      if (result.status == LoginStatus.success) {
+        // --- ส่วนที่แก้ไข: แลก Facebook Access Token เป็น Firebase ID Token ---
+        final AuthCredential credential = FacebookAuthProvider.credential(
+          result.accessToken!.tokenString,
+        );
+
+        // Sign In เข้า Firebase
+        final UserCredential userCredential = await FirebaseAuth.instance
+            .signInWithCredential(credential);
+
+        // ดึง Firebase ID Token (ตัวที่ Backend ตรวจสอบได้)
+        final String? idToken = await userCredential.user?.getIdToken();
+
+        if (idToken != null) {
+          final response = await http.post(
+            Uri.parse('${widget.backendUrl}/api/auth/facebook-login'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'token': idToken}), // ส่ง Firebase ID Token ไปแทน
+          );
+          _processLoginResponse(response, 'Facebook');
+        }
+      } else {
+        _showError('ยกเลิก Facebook Login: ${result.message}');
+      }
+    } catch (e) {
+      _showError('Facebook Error: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -64,15 +167,12 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // 1. โลโก้
               const Icon(
                 Icons.apartment_rounded,
                 size: 100,
                 color: Colors.lightBlue,
               ),
               const SizedBox(height: 20),
-
-              // 2. ชื่อแอป
               const Text(
                 'Condovenient',
                 style: TextStyle(
@@ -86,8 +186,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: TextStyle(fontSize: 16, color: Colors.grey),
               ),
               const SizedBox(height: 40),
-
-              // 3. การ์ด Login
               Card(
                 elevation: 4,
                 shape: RoundedRectangleBorder(
@@ -116,8 +214,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
-
-                      // ปุ่ม Login ปกติ
                       SizedBox(
                         width: double.infinity,
                         height: 50,
@@ -131,35 +227,34 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           child: _isLoading
-                              ? const CircularProgressIndicator(color: Colors.white)
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white,
+                                )
                               : const Text(
                                   'เข้าสู่ระบบ',
                                   style: TextStyle(fontSize: 18),
                                 ),
                         ),
                       ),
-                      
                       const SizedBox(height: 20),
-
-                      // --- ส่วนที่เพิ่มเข้ามา: เส้นคั่น ---
                       Row(
                         children: [
                           Expanded(child: Divider(color: Colors.grey[300])),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 10),
-                            child: Text('หรือ',
-                                style: TextStyle(color: Colors.grey[500])),
+                            child: Text(
+                              'หรือ',
+                              style: TextStyle(color: Colors.grey[500]),
+                            ),
                           ),
                           Expanded(child: Divider(color: Colors.grey[300])),
                         ],
                       ),
-                      
                       const SizedBox(height: 20),
-
-                      // --- ส่วนที่เพิ่มเข้ามา: ปุ่ม Google ---
+                      // Google Button
                       SizedBox(
                         width: double.infinity,
-                        height: 20,
+                        height: 50,
                         child: OutlinedButton(
                           onPressed: _isLoading ? null : _handleGoogleLogin,
                           style: OutlinedButton.styleFrom(
@@ -172,15 +267,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              // โหลดรูป Logo Google สีรุ้งจากเน็ต
                               Image.network(
                                 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/240px-Google_%22G%22_logo.svg.png',
                                 height: 24,
                                 width: 24,
-                                errorBuilder: (context, error, stackTrace) {
-                                  // กันเหนียว: ถ้ารูปไม่ขึ้นให้โชว์ไอคอนปกติแทน
-                                  return const Icon(Icons.g_mobiledata, size: 30, color: Colors.grey);
-                                },
                               ),
                               const SizedBox(width: 12),
                               const Text(
@@ -195,11 +285,34 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ),
+                      const SizedBox(height: 16),
+                      // Facebook Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton.icon(
+                          onPressed: _isLoading ? null : _handleFacebookLogin,
+                          icon: const Icon(Icons.facebook, color: Colors.white),
+                          label: const Text(
+                            'เข้าสู่ระบบด้วย Facebook',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1877F2),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ),
-
               const SizedBox(height: 20),
               TextButton(
                 onPressed: () {},
