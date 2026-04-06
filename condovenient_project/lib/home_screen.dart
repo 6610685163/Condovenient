@@ -100,7 +100,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 24),
           _buildUnitInfo(),
           const SizedBox(height: 24),
-          _buildRecentNotifications(),
+          _buildImportantSchedule(),
           const SizedBox(height: 100),
         ],
       ),
@@ -449,37 +449,157 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildRecentNotifications() {
+  // --- ส่วนใหม่: ตารางกำหนดการสำคัญ (Important Schedule) ---
+  Widget _buildImportantSchedule() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Recent Notifications',
+                'กำหนดการสำคัญ',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
-              TextButton(onPressed: () {}, child: const Text('View All')),
+              TextButton(onPressed: () {}, child: const Text('ดูปฏิทิน')),
             ],
           ),
-          _buildNotificationItem(
-            'Common fee payment received',
-            '2 hours ago',
-            Colors.blue,
+          const SizedBox(height: 8),
+          // รายการกำหนดการ
+          _buildScheduleItem(
+            'งดจ่ายกระแสไฟฟ้าชั่วคราว',
+            '10 เม.ย. 2026 | 09:00 - 12:00',
+            'อาคาร A และ พื้นที่ส่วนกลาง',
+            Icons.flash_off_rounded,
+            Colors.orange,
           ),
-          _buildNotificationItem(
-            'Your parcel has arrived at the lobby',
-            '5 hours ago',
+          _buildScheduleItem(
+            'ฉีดพ่นยากำจัดแมลง',
+            '12 เม.ย. 2026 | 13:00 เป็นต้นไป',
+            'ทุกยูนิต และสวนหย่อม',
+            Icons.bug_report_outlined,
             Colors.green,
           ),
-          _buildNotificationItem(
-            'Repair request #1234 completed',
-            'Yesterday',
-            Colors.grey,
+          _buildScheduleItem(
+            'ตรวจสอบระบบดับเพลิงประจำปี',
+            '15 เม.ย. 2026 | 10:00 - 15:00',
+            'ทุกพื้นที่ภายในโครงการ',
+            Icons.fire_extinguisher_rounded,
+            Colors.red,
           ),
         ],
+      ),
+    );
+  }
+
+  // Widget ย่อยสำหรับแต่ละรายการในตารางเวลา
+  Widget _buildScheduleItem(
+    String title,
+    String time,
+    String location,
+    IconData icon,
+    Color color,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade100),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            // แถบสีด้านซ้ายบอกความสำคัญ
+            Container(
+              width: 6,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  bottomLeft: Radius.circular(16),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            // ไอคอนและรายละเอียด
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 16,
+                  horizontal: 8,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(icon, size: 18, color: color),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.access_time,
+                          size: 14,
+                          color: Colors.grey,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          time,
+                          style: const TextStyle(
+                            color: Colors.black87,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on_outlined,
+                          size: 14,
+                          color: Colors.grey,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          location,
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.grey),
+            const SizedBox(width: 8),
+          ],
+        ),
       ),
     );
   }
