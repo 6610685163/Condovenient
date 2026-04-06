@@ -22,6 +22,9 @@
 | 2026-01-18 | Database | ออกแบบ schema ตาราง maintenance | PostgreSQL | Done |
 | 2026-02-01 | UI/UX Design | ออกแบบ GUI | Figma | Done |
 | 2026-02-11 | Login & Register (frontend) | ทำหน้า login(mobile) | flutter | Done |
+| 2026-04-05 | Repair pages (frontend) | ทำหน้า Repair(mobile) | flutter | Done |
+| 2026-04-06 | Fees pages (frontend) | ทำหน้า Fees(mobile) | flutter | Done |
+
 
 
 ### Name: ฉัตรชัย สีคราม

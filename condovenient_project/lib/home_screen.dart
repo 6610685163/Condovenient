@@ -2,16 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'login_screen.dart';
+import 'repair_screen.dart';
+import 'fees_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  // 1. เพิ่มตัวแปรสำหรับรับค่าจากหน้า Login
   final String userName;
-  final String userRole; // เพิ่ม Role เผื่อไว้ (เช่น Resident/Owner)
+  final String userRole;
 
   const HomeScreen({
     super.key,
-    required this.userName, // บังคับว่าต้องส่งชื่อมา
-    this.userRole = 'Resident', // ค่าเริ่มต้น
+    required this.userName,
+    this.userRole = 'Resident',
   });
 
   @override
@@ -62,24 +63,83 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // --- 1. ฟังก์ชันเลือกหน้าจอที่จะแสดง ---
+  Widget _getSelectedPage() {
+    switch (_selectedIndex) {
+      case 0:
+        return _buildHomeTab(); // หน้า Home เดิม
+      case 1:
+        return const FeesScreen(); // เรียกใช้หน้า FeesScreen
+      case 2:
+        return const RepairScreen(); // เรียกใช้หน้าแจ้งซ่อมที่เราเพิ่งสร้าง
+      case 3:
+        return _buildPlaceholderTab(
+          'รับพัสดุ',
+          Icons.inventory_2,
+          Colors.green,
+        );
+      case 4:
+        return _buildPlaceholderTab(
+          'ข่าวสารและประกาศ',
+          Icons.article,
+          Colors.purple,
+        );
+      default:
+        return _buildHomeTab();
+    }
+  }
+
+  // --- 2. ดึงหน้า Home เดิมมาใส่ฟังก์ชันนี้ ---
+  Widget _buildHomeTab() {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          _buildHeaderSection(),
+          const SizedBox(height: 24),
+          _buildQuickActions(),
+          const SizedBox(height: 24),
+          _buildUnitInfo(),
+          const SizedBox(height: 24),
+          _buildRecentNotifications(),
+          const SizedBox(height: 100),
+        ],
+      ),
+    );
+  }
+
+  // --- 3. สร้างหน้าเปล่าๆ ชั่วคราว (Placeholder) สำหรับแท็บอื่น ---
+  Widget _buildPlaceholderTab(String title, IconData icon, Color color) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 80, color: color.withOpacity(0.5)),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'กำลังอยู่ในขั้นตอนการพัฒนา',
+            style: TextStyle(color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildHeaderSection(),
-            const SizedBox(height: 24),
-            _buildQuickActions(),
-            const SizedBox(height: 24),
-            _buildUnitInfo(),
-            const SizedBox(height: 24),
-            _buildRecentNotifications(),
-            const SizedBox(height: 100),
-          ],
-        ),
-      ),
+      // --- 4. เรียกใช้ฟังก์ชันเลือกหน้ามาใส่ตรง body ---
+      body: _getSelectedPage(),
+
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) => setState(() => _selectedIndex = index),
@@ -104,6 +164,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ==========================================
+  // ส่วน UI ด้านล่างนี้คือของเดิมที่คุณทำไว้ได้ดีอยู่แล้วครับ
+  // ==========================================
+
   Widget _buildHeaderSection() {
     return Stack(
       children: [
@@ -127,7 +191,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       CircleAvatar(
                         backgroundColor: Colors.white.withOpacity(0.2),
                         child: Text(
-                          // 2. ดึงตัวอักษรแรกของชื่อมาแสดงเป็น Avatar
                           widget.userName.isNotEmpty
                               ? widget.userName[0].toUpperCase()
                               : '?',
@@ -145,7 +208,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               fontSize: 12,
                             ),
                           ),
-                          // 3. แสดงชื่อจริงที่รับมา (แทน John Doe)
                           Text(
                             widget.userName,
                             style: const TextStyle(
@@ -178,13 +240,11 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
-        // ... (ส่วนการ์ด Invoice ด้านล่างเหมือนเดิม ไม่ต้องแก้) ...
         _buildInvoiceCard(),
       ],
     );
   }
 
-  // แยก Widget การ์ดออกมาเพื่อให้โค้ดอ่านง่ายขึ้น
   Widget _buildInvoiceCard() {
     return Container(
       margin: const EdgeInsets.only(top: 130, left: 24, right: 24),
@@ -251,7 +311,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: TextStyle(color: Colors.grey, fontSize: 12),
               ),
               TextButton(
-                onPressed: () {},
+                onPressed: () {
+                  // สามารถสั่งให้เปลี่ยนแท็บจากปุ่มนี้ได้ด้วย
+                  setState(() => _selectedIndex = 1); // ไปแท็บ Fees
+                },
                 child: Row(
                   children: const [
                     Text('View Details'),
@@ -280,17 +343,24 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildActionButton(Icons.payment, 'Pay Fee', Colors.blue),
-              _buildActionButton(Icons.build_rounded, 'Repair', Colors.orange),
+              _buildActionButton(Icons.payment, 'Pay Fee', Colors.blue, 1),
+              _buildActionButton(
+                Icons.build_rounded,
+                'Repair',
+                Colors.orange,
+                2,
+              ),
               _buildActionButton(
                 Icons.inventory_2_rounded,
                 'Parcel',
                 Colors.green,
+                3,
               ),
               _buildActionButton(
                 Icons.person_add_rounded,
                 'Visitor',
                 Colors.teal,
+                0,
               ),
             ],
           ),
@@ -299,24 +369,35 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildActionButton(IconData icon, String label, Color color) {
-    return Column(
-      children: [
-        Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(16),
+  // ปรับให้ปุ่ม Quick Action รับค่า index ปลายทาง เพื่อกดแล้วลิงก์ไปแท็บอื่นได้เลย
+  Widget _buildActionButton(
+    IconData icon,
+    String label,
+    Color color,
+    int targetIndex,
+  ) {
+    return GestureDetector(
+      onTap: () {
+        setState(() => _selectedIndex = targetIndex);
+      },
+      child: Column(
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(icon, color: color, size: 28),
           ),
-          child: Icon(icon, color: color, size: 28),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-        ),
-      ],
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
     );
   }
 
@@ -354,7 +435,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                // 4. ใช้ role ที่รับมาแสดงตรงนี้ได้ (ถ้าต้องการ)
                 widget.userRole,
                 style: const TextStyle(
                   fontSize: 12,
