@@ -1,20 +1,23 @@
-const pool = require('../config/db');
-const admin = require('../config/firebase');
+const { db, admin } = require('../config/firebase');
 
 exports.login = async (req, res) => {
     // 1. รับค่าที่ส่งมาจากหน้าบ้าน
     const { username, password } = req.body;
 
     try {
-        // 2. ค้นหา User ใน Database
-        const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+        // 2. ค้นหา User ใน Firestore Database โดยใช้ where()
+        const usersRef = db.collection('users');
+        const snapshot = await usersRef.where('username', '==', username).get();
 
-        // 3. ถ้าไม่เจอ User
-        if (result.rows.length === 0) {
+        // 3. ถ้าไม่เจอ User (snapshot จะว่างเปล่า)
+        if (snapshot.empty) {
             return res.status(401).json({ success: false, message: 'ไม่พบผู้ใช้งานนี้' });
         }
 
-        const user = result.rows[0];
+        // ดึงข้อมูล Document ออกมา (สมมติว่า username ไม่ซ้ำ จะเจอแค่ 1 รายการ)
+        const userDoc = snapshot.docs[0];
+        const user = userDoc.data();
+        const userId = userDoc.id; // ใน Firestore ID ของเอกสารจะอยู่ที่ .id
 
         // 4. เช็ค Password (แบบง่าย)
         if (password !== user.password) {
@@ -26,7 +29,7 @@ exports.login = async (req, res) => {
             success: true,
             message: 'Login สำเร็จ',
             user: {
-                id: user.user_id,
+                id: userId,
                 name: user.name,
                 role: user.role // หน้าบ้านต้องใช้ค่านี้เพื่อเปลี่ยนหน้าจอ
             }
@@ -38,30 +41,38 @@ exports.login = async (req, res) => {
     }
 };
 
-
 exports.register = async (req, res) => {
     // 1. รับค่าจากหน้าบ้าน
     const { username, password, name, role } = req.body;
 
     try {
         // 2. เช็คก่อนว่า Username นี้มีคนใช้ไปหรือยัง?
-        const checkUser = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-        if (checkUser.rows.length > 0) {
+        const usersRef = db.collection('users');
+        const snapshot = await usersRef.where('username', '==', username).get();
+        
+        if (!snapshot.empty) {
             return res.status(400).json({ success: false, message: 'Username นี้มีผู้ใช้งานแล้ว' });
         }
 
-        // 3. เพิ่มข้อมูลลง Database
-        // (SQL: INSERT คือการเพิ่มแถวใหม่)
-        const newUser = await pool.query(
-            'INSERT INTO users (username, password, name, role) VALUES ($1, $2, $3, $4) RETURNING *',
-            [username, password, name, role || 'resident'] // ถ้าไม่ส่ง role มา ให้ default เป็น resident
-        );
+        // 3. เพิ่มข้อมูลลง Firestore ด้วยคำสั่ง .add() (ระบบจะสุ่ม ID ให้เอง)
+        const newUser = {
+            username: username,
+            password: password,
+            name: name,
+            role: role || 'resident', // ถ้าไม่ส่ง role มา ให้ default เป็น resident
+            createdAt: admin.firestore.FieldValue.serverTimestamp() // เก็บเวลาสร้างไว้ด้วย
+        };
+
+        const docRef = await usersRef.add(newUser);
 
         // 4. ส่งผลลัพธ์กลับไป
         res.status(201).json({
             success: true,
             message: 'สมัครสมาชิกสำเร็จ!',
-            user: newUser.rows[0]
+            user: {
+                id: docRef.id,
+                ...newUser
+            }
         });
 
     } catch (err) {
@@ -79,21 +90,34 @@ exports.googleLogin = async (req, res) => {
         const decodedToken = await admin.auth().verifyIdToken(token);
         const { email, name, uid } = decodedToken;
 
-        // 3. เช็คว่ามี User นี้ใน Database ของเราหรือยัง? (ใช้ email เป็น username)
-        // หมายเหตุ: คุณอาจต้องปรับ Database ให้ username เก็บ email ได้ หรือเพิ่ม column email
-        let userResult = await pool.query('SELECT * FROM users WHERE username = $1', [email]);
-        let user = userResult.rows[0];
+        // 3. เช็คว่ามี User นี้ใน Database ของเราหรือยัง?
+        const usersRef = db.collection('users');
+        const snapshot = await usersRef.where('username', '==', email).get();
+
+        let userData;
+        let userId;
 
         // 4. ถ้ายังไม่มี ให้สมัครสมาชิกให้อัตโนมัติ
-        if (!user) {
+        if (snapshot.empty) {
             // สร้าง Password มั่วๆ เพราะ User นี้เข้าผ่าน Google ไม่ต้องใช้ Password
             const randomPassword = Math.random().toString(36).slice(-8); 
             
-            const newUser = await pool.query(
-                'INSERT INTO users (username, password, name, role) VALUES ($1, $2, $3, $4) RETURNING *',
-                [email, randomPassword, name || 'Google User', 'resident']
-            );
-            user = newUser.rows[0];
+            const newUser = {
+                username: email,
+                password: randomPassword,
+                name: name || 'Google User',
+                role: 'resident',
+                createdAt: admin.firestore.FieldValue.serverTimestamp()
+            };
+
+            const docRef = await usersRef.add(newUser);
+            userData = newUser;
+            userId = docRef.id;
+        } else {
+            // ถ้ามีอยู่แล้วก็ดึงข้อมูลมาใช้ได้เลย
+            const userDoc = snapshot.docs[0];
+            userData = userDoc.data();
+            userId = userDoc.id;
         }
 
         // 5. ส่งข้อมูล User กลับไปให้หน้าบ้าน
@@ -101,9 +125,9 @@ exports.googleLogin = async (req, res) => {
             success: true,
             message: 'Google Login สำเร็จ',
             user: {
-                id: user.user_id,
-                name: user.name,
-                role: user.role
+                id: userId,
+                name: userData.name,
+                role: userData.role
             }
         });
 
@@ -116,30 +140,41 @@ exports.googleLogin = async (req, res) => {
 exports.facebookLogin = async (req, res) => {
     const { token } = req.body;
     try {
-        // Firebase Admin SDK จะตรวจสอบ Token ไม่ว่าจะมาจาก Google หรือ Facebook
         const decodedToken = await admin.auth().verifyIdToken(token);
         const { email, uid, name } = decodedToken;
 
-        // บางครั้ง Facebook ไม่ส่ง Email มา (ถ้า User ไม่ได้ verify) ให้ใช้ UID แทน
+        // บางครั้ง Facebook ไม่ส่ง Email มา ให้ใช้ UID แทน
         const username = email || uid;
 
-        let userResult = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-        let user = userResult.rows[0];
+        const usersRef = db.collection('users');
+        const snapshot = await usersRef.where('username', '==', username).get();
 
-        if (!user) {
+        let userData;
+        let userId;
+
+        if (snapshot.empty) {
             // สมัครสมาชิกใหม่
             const randomPassword = Math.random().toString(36).slice(-8);
-            const newUser = await pool.query(
-                'INSERT INTO users (username, password, name, role) VALUES ($1, $2, $3, $4) RETURNING *',
-                [username, randomPassword, name || 'Facebook User', 'resident']
-            );
-            user = newUser.rows[0];
+            const newUser = {
+                username: username,
+                password: randomPassword,
+                name: name || 'Facebook User',
+                role: 'resident',
+                createdAt: admin.firestore.FieldValue.serverTimestamp()
+            };
+            const docRef = await usersRef.add(newUser);
+            userData = newUser;
+            userId = docRef.id;
+        } else {
+            const userDoc = snapshot.docs[0];
+            userData = userDoc.data();
+            userId = userDoc.id;
         }
 
         res.json({
             success: true,
             message: 'Facebook Login สำเร็จ',
-            user: { id: user.user_id, name: user.name, role: user.role }
+            user: { id: userId, name: userData.name, role: userData.role }
         });
 
     } catch (err) {
@@ -150,11 +185,22 @@ exports.facebookLogin = async (req, res) => {
 
 exports.getAllUsers = async (req, res) => {
     try {
-        // ดึง id, username, name, role (ไม่เอา password เพราะเป็นความลับ)
-        const result = await pool.query('SELECT user_id, username, name, role FROM users ORDER BY user_id ASC');
+        const snapshot = await db.collection('users').get();
+        let users = [];
         
+        // วนลูปอ่านข้อมูลทีละ Document แล้วเลือกเฉพาะ field ที่ต้องการ
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            users.push({
+                user_id: doc.id, // ใช้ Document ID ไปจำลองเป็น user_id
+                username: data.username,
+                name: data.name,
+                role: data.role
+            });
+        });
+
         // ส่งข้อมูลกลับไปเป็น JSON array
-        res.json(result.rows);
+        res.json(users);
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ success: false, message: 'Server Error' });
@@ -162,22 +208,27 @@ exports.getAllUsers = async (req, res) => {
 };
 
 exports.deleteUser = async (req, res) => {
-    // 1. รับค่า id ที่ส่งมาทาง URL (เช่น /users/5 -> id คือ 5)
+    // 1. รับค่า id ที่ส่งมาทาง URL
     const { id } = req.params;
 
     try {
-        // 2. สั่งลบข้อมูลใน Database
-        const result = await pool.query('DELETE FROM users WHERE user_id = $1 RETURNING *', [id]);
+        const userRef = db.collection('users').doc(id);
+        const doc = await userRef.get();
 
-        // 3. เช็คว่าลบได้จริงไหม (ถ้า rowCount = 0 แปลว่าไม่มี id นี้อยู่แล้ว)
-        if (result.rowCount === 0) {
+        // 3. เช็คว่ามี id นี้อยู่ไหม ก่อนลบ
+        if (!doc.exists) {
             return res.status(404).json({ success: false, message: 'ไม่พบผู้ใช้งานนี้ (อาจจะลบไปแล้ว)' });
         }
+
+        const userData = doc.data();
+        
+        // 2. สั่งลบข้อมูลใน Firestore
+        await userRef.delete();
 
         // 4. แจ้งกลับว่าลบสำเร็จ
         res.json({
             success: true,
-            message: `ลบผู้ใช้งาน ${result.rows[0].username} เรียบร้อยแล้ว`,
+            message: `ลบผู้ใช้งาน ${userData.username} เรียบร้อยแล้ว`,
         });
 
     } catch (err) {
@@ -185,4 +236,3 @@ exports.deleteUser = async (req, res) => {
         res.status(500).json({ success: false, message: 'Server Error' });
     }
 };
-
