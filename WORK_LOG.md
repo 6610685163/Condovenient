@@ -71,3 +71,5 @@
 | 2026-01-24 | CLASS DIAGRAM | ออกแบบ CLASS DIAGRAM | visual-paradigm.com | Done |
 | 2026-01-30 | GUI | ออกแบบ GUI | figma | Done |
 | 2026-02-08  | demo app | ออกแบบทำ app demo | flutter | Done |
+| 2026-02-29 | Resident function | Develop function (payCommonFee), (reportRepair), (registerVisitor) | VS code | Done |
+| 2026-04-13 | Access log | Implement systems to record entry and record exit timestamps for security tracking. | VS code | Done |
