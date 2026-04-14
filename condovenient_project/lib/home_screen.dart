@@ -4,6 +4,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'login_screen.dart';
 import 'repair_screen.dart';
 import 'fees_screen.dart';
+import 'parcel_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String userName;
@@ -73,11 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 2:
         return const RepairScreen(); // เรียกใช้หน้าแจ้งซ่อมที่เราเพิ่งสร้าง
       case 3:
-        return _buildPlaceholderTab(
-          'รับพัสดุ',
-          Icons.inventory_2,
-          Colors.green,
-        );
+        return const ParcelScreen(); // เรียกใช้หน้า ParcelScreen ที่เราสร้างไว้แล้ว
       case 4:
         return _buildPlaceholderTab(
           'ข่าวสารและประกาศ',
