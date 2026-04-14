@@ -60,27 +60,30 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // 1. ฟังก์ชัน Login ปกติ
+  // 1. ฟังก์ชัน Login (แบบข้าม Backend ชั่วคราวเพื่อให้เทส UI ได้เร็วๆ)
   void _handleLogin() async {
     if (_roomController.text.isEmpty || _passwordController.text.isEmpty) {
       _showError('กรุณากรอกเลขห้องและรหัสผ่าน');
       return;
     }
+
     setState(() => _isLoading = true);
-    try {
-      final response = await http.post(
-        Uri.parse('${widget.backendUrl}/api/auth/login'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'username': _roomController.text,
-          'password': _passwordController.text,
-        }),
+
+    // จำลองการโหลดแค่ 1 วินาที
+    await Future.delayed(const Duration(seconds: 1));
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+      // เปลี่ยนหน้าไป Home ทันที พร้อมส่งชื่อจำลองไป
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const HomeScreen(
+            userName: 'ทดสอบ ระบบ', // ชื่อสมมติ
+            userRole: 'Resident', // ตำแหน่งสมมติ
+          ),
+        ),
       );
-      _processLoginResponse(response, 'ปกติ');
-    } catch (e) {
-      _showError('เกิดข้อผิดพลาด: $e');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -267,11 +270,21 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
+                              // --- แก้ไขตรงนี้: เปลี่ยน URL และดัก Error ---
                               Image.network(
-                                'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/240px-Google_%22G%22_logo.svg.png',
+                                'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
                                 height: 24,
                                 width: 24,
+                                errorBuilder: (context, error, stackTrace) {
+                                  // ถ้าโหลดรูปไม่ขึ้น จะโชว์ไอคอนตัว G แทน แอปจะได้ไม่พัง (ไม่เกิดจอดำเหลือง)
+                                  return const Icon(
+                                    Icons.g_mobiledata,
+                                    size: 32,
+                                    color: Colors.blue,
+                                  );
+                                },
                               ),
+                              // ----------------------------------------
                               const SizedBox(width: 12),
                               const Text(
                                 'เข้าสู่ระบบด้วย Google',
