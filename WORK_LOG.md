@@ -26,8 +26,6 @@
 | 2026-04-06 | Fees pages (frontend) | ทำหน้า Fees(mobile) | flutter | Done |
 | 2026-04-07 | Scheduling UI | ทำ scheduling UI(mobile) | flutter | Done |
 
-
-
 ### Name: ฉัตรชัย สีคราม
 **Student ID:** 6610685064  
 **Role:** Backend Developer
@@ -36,7 +34,6 @@
 |------|------|------------|-------------|--------|
 | 2026-01-15 | Backend API | ออกแบบ REST API สำหรับระบบแจ้งซ่อม | Node.js, Express | Done |
 | 2026-01-18 | Database | ออกแบบ schema ตาราง maintenance | PostgreSQL | Done |
-
 
 ### Name: ชิติพัทธ์ ตากตำรงค์กุล
 **Student ID:** 6610685130  
@@ -50,7 +47,6 @@
 | 2026-02-08 | Requirement -> Implement | ทบทวนด้วยการ Mapping & Facade Design Pattern | Canva | Done |
 | 2026-02-09 | Project Management | วางแผนและกำหนดการทำงานของแต่ละคน | Jira | Done |
 
-
 ### Name: ธนบดี สุดแดน
 **Student ID:** 6610685163  
 **Role:** Backend Developer
@@ -62,9 +58,9 @@
 | 2026-01-31 | USE CASE DIAGRAM | ออกแบบ USE CASE DIAGRAM | Canva | Done |
 | 2026-01-31 | CLI | แก้ไขปรับปรุง CLI | Python, VS Code | Done |
 | 2026-02-08 | mapping | ทบทวนด้วยการ mapping | Canva | Done |
-| 2026-02-11 | Login & Register (backend) | ทำระบบ login | Node.js, Express, PostgreSQL, Postman | Done |
-| 2026-02-14 | Login & Register | เชื่อมระบบกับหน้าบ้าน, เพิ่มการ login ผ่าน provider อื่นๆ | Flutter, Dart, Node.js, Express, PostgreSQL, Firebase Auth | Done |
-
+| 2026-02-11 | Login & Register (backend) | ทำระบบ login | Node.js, Express, PostgreSQL | Done |
+| 2026-02-14 | Login & Register | เชื่อมระบบกับหน้าบ้าน, เพิ่มการ login ผ่าน provider อื่นๆ | flutter, Node.js, PostgreSQL, Firebase| Done |
+| 2026-04-27 | Web, System | เพิ่มหน้าใน web, วางระบบ notification, การเงิน | Node.js, React | Done |
 
 ### Name: เสฎฐพัชร ญาณพัฒน์สร
 **Student ID:** 6610685361  
