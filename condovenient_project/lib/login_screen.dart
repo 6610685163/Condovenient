@@ -43,6 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
             builder: (context) => HomeScreen(
               userName: data['user']['name'] ?? 'User',
               userRole: data['user']['role'] ?? 'Resident',
+              userId: data['user']['id'] ?? '',
             ),
           ),
         );
@@ -60,7 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // 1. ฟังก์ชัน Login (แบบข้าม Backend ชั่วคราวเพื่อให้เทส UI ได้เร็วๆ)
+  // 1. ฟังก์ชัน Login เชื่อมต่อ Backend จริง
   void _handleLogin() async {
     if (_roomController.text.isEmpty || _passwordController.text.isEmpty) {
       _showError('กรุณากรอกเลขห้องและรหัสผ่าน');
@@ -69,21 +70,21 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
 
-    // จำลองการโหลดแค่ 1 วินาที
-    await Future.delayed(const Duration(seconds: 1));
-
-    if (mounted) {
-      setState(() => _isLoading = false);
-      // เปลี่ยนหน้าไป Home ทันที พร้อมส่งชื่อจำลองไป
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const HomeScreen(
-            userName: 'ทดสอบ ระบบ', // ชื่อสมมติ
-            userRole: 'Resident', // ตำแหน่งสมมติ
-          ),
-        ),
+    try {
+      // เรียก Backend API /api/auth/login
+      final response = await http.post(
+        Uri.parse('${widget.backendUrl}/api/auth/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'username': _roomController.text.trim(),
+          'password': _passwordController.text,
+        }),
       );
+      _processLoginResponse(response, 'Password');
+    } catch (e) {
+      _showError('ไม่สามารถเชื่อมต่อ Server ได้: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

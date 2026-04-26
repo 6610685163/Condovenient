@@ -1,5 +1,4 @@
-const admin = require('../config/firebase');
-const db = admin.firestore();
+const { admin, db } = require('../config/firebase');
 
 // --- ฟังก์ชัน: ลงทะเบียนเข้า (Check-in) ---
 exports.visitorCheckIn = async (req, res) => {

@@ -1,20 +1,65 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class FeesScreen extends StatefulWidget {
-  const FeesScreen({super.key});
+  final String userId;
+  final String roomId;
+
+  const FeesScreen({super.key, this.userId = '', this.roomId = ''});
 
   @override
   State<FeesScreen> createState() => _FeesScreenState();
 }
 
 class _FeesScreenState extends State<FeesScreen> {
+  final String _backendUrl = 'http://10.0.2.2:3000';
+  List<Map<String, dynamic>> _invoices = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInvoices();
+  }
+
+  // โหลดรายการ Invoice จาก Backend
+  Future<void> _loadInvoices() async {
+    if (widget.userId.isEmpty) {
+      setState(() => _isLoading = false);
+      return;
+    }
+    try {
+      final response = await http.get(
+        Uri.parse('$_backendUrl/api/payment/invoices/${widget.userId}'),
+        headers: {'Content-Type': 'application/json'},
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _invoices = List<Map<String, dynamic>>.from(data['invoices'] ?? []);
+          _isLoading = false;
+        });
+      } else {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
+
   // ฟังก์ชันจำลองการกดจ่ายเงิน (เด้ง Bottom Sheet ขึ้นมา)
   void _showPaymentGateway() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => const PaymentGatewaySheet(),
+      builder: (context) => PaymentGatewaySheet(
+        backendUrl: _backendUrl,
+        roomId: widget.roomId,
+        userId: widget.userId,
+        onPaymentSuccess: _loadInvoices, // Refresh Invoice หลังจ่ายเงิน
+      ),
     );
   }
 
@@ -32,145 +77,163 @@ class _FeesScreenState extends State<FeesScreen> {
         elevation: 0,
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // --- 1. การ์ดยอดค้างชำระ (Outstanding Balance) ---
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Colors.blue[700]!, Colors.blue[500]!],
-                ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.blue.withOpacity(0.3),
-                    blurRadius: 15,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'ยอดค้างชำระรวม',
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                  // --- 1. การ์ดยอดค้างชำระ (Outstanding Balance) ---
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Colors.blue[700]!, Colors.blue[500]!],
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.blue.withOpacity(0.3),
+                          blurRadius: 15,
+                          offset: const Offset(0, 8),
                         ),
-                        decoration: BoxDecoration(
-                          color: Colors.redAccent,
-                          borderRadius: BorderRadius.circular(12),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'ยอดค้างชำระรวม',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.redAccent,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Text(
+                                'Unpaid',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        child: const Text(
-                          'Unpaid',
+                        const SizedBox(height: 12),
+                        const Text(
+                          '฿ 5,250.00',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 12,
+                            fontSize: 36,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    '฿ 5,250.00',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
+                        const SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: const [
+                                Text(
+                                  'ครบกำหนดชำระ',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  '15 ก.พ. 2026',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            ElevatedButton(
+                              onPressed: _showPaymentGateway,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: Colors.blue[700],
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 12,
+                                ),
+                              ),
+                              child: const Text(
+                                'ชำระเงิน',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text(
-                            'ครบกำหนดชำระ',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            '15 ก.พ. 2026',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                      ElevatedButton(
-                        onPressed: _showPaymentGateway,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.blue[700],
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 12,
-                          ),
-                        ),
-                        child: const Text(
-                          'ชำระเงิน',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 32),
+
+                  // --- 2. ประวัติการชำระเงิน (Invoice History) ---
+                  const Text(
+                    'ประวัติการชำระเงิน',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
+                  const SizedBox(height: 16),
+
+                  // แสดงข้อมูลจาก Backend ถ้ามี หรือแสดงข้อมูลจำลองถ้าไม่มี
+                  if (_invoices.isNotEmpty)
+                    ..._invoices.map(
+                      (inv) => _buildInvoiceItem(
+                        inv['description'] ?? 'ค่าส่วนกลาง',
+                        inv['dueDate'] ?? '',
+                        (inv['amount'] ?? 0).toString(),
+                        inv['status'] == 'paid',
+                      ),
+                    )
+                  else ...[
+                    _buildInvoiceItem(
+                      'ค่าส่วนกลาง เดือน ม.ค. 2026',
+                      '15 ม.ค. 2026',
+                      '5,250.00',
+                      true,
+                    ),
+                    _buildInvoiceItem(
+                      'ค่าส่วนกลาง เดือน ธ.ค. 2025',
+                      '15 ธ.ค. 2025',
+                      '5,250.00',
+                      true,
+                    ),
+                    _buildInvoiceItem(
+                      'ค่าที่จอดรถเพิ่มเติม (พ.ย.)',
+                      '02 พ.ย. 2025',
+                      '1,000.00',
+                      true,
+                    ),
+                  ],
                 ],
               ),
             ),
-            const SizedBox(height: 32),
-
-            // --- 2. ประวัติการชำระเงิน (Invoice History) ---
-            const Text(
-              'ประวัติการชำระเงิน',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            _buildInvoiceItem(
-              'ค่าส่วนกลาง เดือน ม.ค. 2026',
-              '15 ม.ค. 2026',
-              '5,250.00',
-              true,
-            ),
-            _buildInvoiceItem(
-              'ค่าส่วนกลาง เดือน ธ.ค. 2025',
-              '15 ธ.ค. 2025',
-              '5,250.00',
-              true,
-            ),
-            _buildInvoiceItem(
-              'ค่าที่จอดรถเพิ่มเติม (พ.ย.)',
-              '02 พ.ย. 2025',
-              '1,000.00',
-              true,
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -249,7 +312,18 @@ class _FeesScreenState extends State<FeesScreen> {
 // --- Widget สำหรับแสดงหน้าต่างจำลอง Payment Gateway ด้านล่าง ---
 // ============================================================================
 class PaymentGatewaySheet extends StatefulWidget {
-  const PaymentGatewaySheet({super.key});
+  final String backendUrl;
+  final String roomId;
+  final String userId;
+  final VoidCallback? onPaymentSuccess;
+
+  const PaymentGatewaySheet({
+    super.key,
+    required this.backendUrl,
+    this.roomId = '',
+    this.userId = '',
+    this.onPaymentSuccess,
+  });
 
   @override
   State<PaymentGatewaySheet> createState() => _PaymentGatewaySheetState();
@@ -261,56 +335,98 @@ class _PaymentGatewaySheetState extends State<PaymentGatewaySheet> {
 
   void _processPayment() async {
     setState(() => _isProcessing = true);
-    // จำลองการเชื่อมต่อธนาคาร 3 วินาที
-    await Future.delayed(const Duration(seconds: 3));
 
-    if (mounted) {
-      setState(() => _isProcessing = false);
-      Navigator.pop(context); // ปิดหน้าต่าง Payment
+    try {
+      // 1. บันทึกการชำระเงินไปที่ Backend
+      final paymentResponse = await http.post(
+        Uri.parse('${widget.backendUrl}/api/payment/pay-common-fee'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'roomId': widget.roomId,
+          'amount': 5250.00,
+          'paymentMethod': _selectedMethod == 0
+              ? 'qr_promptpay'
+              : 'credit_card',
+          'slipUrl': '',
+        }),
+      );
 
-      // โชว์ Pop-up จ่ายเงินสำเร็จ
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.check_circle, color: Colors.green, size: 64),
-              const SizedBox(height: 16),
-              const Text(
-                'ชำระเงินสำเร็จ',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'ระบบได้รับยอดเงิน ฿ 5,250.00 แล้ว\nใบเสร็จถูกส่งไปยังอีเมลของคุณ',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[700],
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+      if (paymentResponse.statusCode != 201) {
+        throw Exception('ไม่สามารถบันทึกการชำระเงินได้');
+      }
+
+      final paymentData = jsonDecode(paymentResponse.body);
+      final String paymentId = paymentData['paymentId'];
+
+      // 2. เรียก Bank API Verification ผ่าน Backend
+      final verifyResponse = await http.post(
+        Uri.parse('${widget.backendUrl}/api/payment/verify/$paymentId'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'invoiceId': ''}),
+      );
+
+      final verifyData = jsonDecode(verifyResponse.body);
+
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        Navigator.pop(context); // ปิดหน้าต่าง Payment
+
+        // โชว์ Pop-up จ่ายเงินสำเร็จ
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.check_circle, color: Colors.green, size: 64),
+                const SizedBox(height: 16),
+                const Text(
+                  'ชำระเงินสำเร็จ',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  verifyData['receiptId'] != null
+                      ? 'ระบบได้รับยอดเงิน ฿ 5,250.00 แล้ว\nใบเสร็จ #${verifyData['receiptId']}'
+                      : 'ระบบได้รับยอดเงิน ฿ 5,250.00 แล้ว\nใบเสร็จถูกส่งไปยังอีเมลของคุณ',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      widget.onPaymentSuccess?.call(); // Refresh Invoice list
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue[700],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Text(
+                      'กลับสู่หน้าหลัก',
+                      style: TextStyle(color: Colors.white),
                     ),
                   ),
-                  child: const Text(
-                    'กลับสู่หน้าหลัก',
-                    style: TextStyle(color: Colors.white),
-                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      );
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('เกิดข้อผิดพลาด: $e')));
+      }
     }
   }
 
