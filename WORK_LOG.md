@@ -79,3 +79,4 @@
 | 2026-02-08  | demo app | ออกแบบทำ app demo | flutter | Done |
 | 2026-02-29 | Resident function | Develop function (payCommonFee), (reportRepair), (registerVisitor) | VS code | Done |
 | 2026-04-13 | Access log | Implement systems to record entry and record exit timestamps for security tracking. | VS code | Done |
+| 2026-04-26 | RepairRequest | Create createRequest(), assignTechnician(), closeRequest() | VS code | Done |
