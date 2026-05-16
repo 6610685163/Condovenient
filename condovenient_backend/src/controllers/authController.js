@@ -144,7 +144,8 @@ exports.googleLogin = async (req, res) => {
             user: {
                 id: userId,
                 name: userData.name,
-                role: userData.role
+                role: userData.role,
+                roomNumber: userData.roomNumber || ''
             }
         });
 
@@ -199,7 +200,7 @@ exports.facebookLogin = async (req, res) => {
         res.json({
             success: true,
             message: 'Facebook Login สำเร็จ',
-            user: { id: userId, name: userData.name, role: userData.role }
+            user: { id: userId, name: userData.name, role: userData.role, roomNumber: userData.roomNumber || '' }
         });
 
     } catch (err) {
@@ -221,7 +222,8 @@ exports.getAllUsers = async (req, res) => {
                 username: data.username,
                 name: data.name,
                 role: data.role,
-                password: data.password
+                password: data.password,
+                createdAt: data.createdAt ? data.createdAt.toDate().toISOString() : null
             });
         });
 

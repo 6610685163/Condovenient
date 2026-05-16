@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'dart:async';
 import 'login_screen.dart';
 import 'repair_screen.dart';
 import 'fees_screen.dart';
@@ -11,12 +14,14 @@ class HomeScreen extends StatefulWidget {
   final String userName;
   final String userRole;
   final String userId;
+  final String roomNumber; // เพิ่ม roomNumber จาก backend
 
   const HomeScreen({
     super.key,
     required this.userName,
     this.userRole = 'Resident',
     this.userId = '',
+    this.roomNumber = '',
   });
 
   @override
@@ -25,6 +30,109 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  int _unreadCount = 0;
+  Timer? _notifTimer;
+  final String _backendUrl = 'http://10.0.2.2:3000';
+
+  // Invoice summary สำหรับหน้า Home
+  double _totalUnpaid = 0;
+  String _dueDateStr = '-';
+  bool _invoiceLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUnreadCount();
+    _fetchInvoiceSummary();
+    _notifTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _fetchUnreadCount();
+      _fetchInvoiceSummary();
+    });
+  }
+
+  @override
+  void dispose() {
+    _notifTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetchUnreadCount() async {
+    if (widget.userId.isEmpty) return;
+    try {
+      final response = await http.get(
+        Uri.parse('$_backendUrl/api/auth/notifications/${widget.userId}'),
+      ).timeout(const Duration(seconds: 8));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && mounted) {
+          final notifs = List<dynamic>.from(data['notifications'] ?? []);
+          setState(() {
+            _unreadCount = notifs.where((n) => n['isRead'] == false).length;
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  // ดึง invoice summary เพื่อแสดงบนหน้า Home
+  Future<void> _fetchInvoiceSummary() async {
+    // ถ้าไม่มี userId หยุด spinner ทันที ไม่ต้อง request
+    if (widget.userId.isEmpty) {
+      if (mounted) setState(() => _invoiceLoaded = true);
+      return;
+    }
+    try {
+      final response = await http.get(
+        Uri.parse('$_backendUrl/api/payment/invoices/${widget.userId}'),
+      ).timeout(const Duration(seconds: 8));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final invoices = List<Map<String, dynamic>>.from(data['invoices'] ?? []);
+        final unpaid = invoices.where((inv) => inv['status'] == 'pending').toList();
+
+        double total = unpaid.fold(
+          0.0,
+          (sum, inv) => sum + ((inv['amount'] ?? 0) as num).toDouble(),
+        );
+
+        String dueDate = '-';
+        if (unpaid.isNotEmpty) {
+          final raw = unpaid.first['dueDate'] ?? '';
+          if (raw.isNotEmpty) {
+            try {
+              final dt = DateTime.tryParse(raw);
+              if (dt != null) {
+                const months = [
+                  '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+                ];
+                dueDate = '${months[dt.month]} ${dt.day}, ${dt.year}';
+              } else {
+                dueDate = raw;
+              }
+            } catch (_) {
+              dueDate = raw;
+            }
+          }
+        }
+
+        if (mounted) {
+          setState(() {
+            _totalUnpaid = total;
+            _dueDateStr = dueDate;
+            _invoiceLoaded = true; // หยุด spinner
+          });
+        }
+      } else {
+        // HTTP error → หยุด spinner แสดงยอด 0
+        if (mounted) setState(() => _invoiceLoaded = true);
+      }
+    } catch (_) {
+      // Network error / timeout → หยุด spinner แสดงยอด 0
+      if (mounted) setState(() => _invoiceLoaded = true);
+    }
+  }
 
   void _handleLogout() async {
     bool? confirm = await showDialog<bool>(
@@ -49,7 +157,6 @@ class _HomeScreenState extends State<HomeScreen> {
       try {
         await FirebaseAuth.instance.signOut();
         await GoogleSignIn().signOut();
-
         if (mounted) {
           Navigator.pushAndRemoveUntil(
             context,
@@ -59,33 +166,32 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('เกิดข้อผิดพลาด: $e')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('เกิดข้อผิดพลาด: $e')),
+          );
         }
       }
     }
   }
 
-  // --- 1. ฟังก์ชันเลือกหน้าจอที่จะแสดง ---
- Widget _getSelectedPage() {
+  Widget _getSelectedPage() {
     switch (_selectedIndex) {
       case 0:
         return _buildHomeTab();
       case 1:
-        return FeesScreen(userId: widget.userId, roomId: widget.userId);
+        // ส่ง roomNumber ที่ถูกต้องไปยัง FeesScreen
+        return FeesScreen(userId: widget.userId, roomId: widget.roomNumber);
       case 2:
-        return RepairScreen(userId: widget.userId, roomNumber: widget.userRole);
+        return RepairScreen(userId: widget.userId, roomNumber: widget.roomNumber);
       case 3:
-        return const ParcelScreen();
+        return ParcelScreen(userId: widget.userId);
       case 4:
-        return VisitorScreen(userId: widget.userId, roomNumber: widget.userRole);
+        return VisitorScreen(userId: widget.userId, roomNumber: widget.roomNumber);
       default:
         return _buildHomeTab();
     }
   }
 
-  // --- 2. ดึงหน้า Home เดิมมาใส่ฟังก์ชันนี้ ---
   Widget _buildHomeTab() {
     return SingleChildScrollView(
       child: Column(
@@ -103,39 +209,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- 3. สร้างหน้าเปล่าๆ ชั่วคราว (Placeholder) สำหรับแท็บอื่น ---
-  Widget _buildPlaceholderTab(String title, IconData icon, Color color) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 80, color: color.withOpacity(0.5)),
-          const SizedBox(height: 16),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'กำลังอยู่ในขั้นตอนการพัฒนา',
-            style: TextStyle(color: Colors.grey),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
-      // --- 4. เรียกใช้ฟังก์ชันเลือกหน้ามาใส่ตรง body ---
       body: _getSelectedPage(),
-
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) => setState(() => _selectedIndex = index),
@@ -143,26 +221,37 @@ class _HomeScreenState extends State<HomeScreen> {
         selectedItemColor: Colors.blue[700],
         unselectedItemColor: Colors.grey,
         showUnselectedLabels: true,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+        items: [
+          const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          const BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Fees'),
+          const BottomNavigationBarItem(icon: Icon(Icons.build), label: 'Repair'),
           BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_long),
-            label: 'Fees',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.build), label: 'Repair'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.inventory_2),
+            icon: Stack(
+              children: [
+                const Icon(Icons.inventory_2),
+                if (_unreadCount > 0)
+                  Positioned(
+                    right: 0, top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                      constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                      child: Text(
+                        '$_unreadCount',
+                        style: const TextStyle(color: Colors.white, fontSize: 9),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
             label: 'Parcel',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.person_add), label: 'Visitor'),
+          const BottomNavigationBarItem(icon: Icon(Icons.person_add), label: 'Visitor'),
         ],
       ),
     );
   }
-
-  // ==========================================
-  // ส่วน UI ด้านล่างนี้คือของเดิมที่คุณทำไว้ได้ดีอยู่แล้วครับ
-  // ==========================================
 
   Widget _buildHeaderSection() {
     return Stack(
@@ -187,9 +276,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       CircleAvatar(
                         backgroundColor: Colors.white.withOpacity(0.2),
                         child: Text(
-                          widget.userName.isNotEmpty
-                              ? widget.userName[0].toUpperCase()
-                              : '?',
+                          widget.userName.isNotEmpty ? widget.userName[0].toUpperCase() : '?',
                           style: const TextStyle(color: Colors.white),
                         ),
                       ),
@@ -197,20 +284,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Welcome back,',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                            ),
-                          ),
+                          const Text('Welcome back,', style: TextStyle(color: Colors.white70, fontSize: 12)),
                           Text(
                             widget.userName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
@@ -220,10 +297,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       IconButton(
                         onPressed: () {},
-                        icon: const Icon(
-                          Icons.notifications_outlined,
-                          color: Colors.white,
-                        ),
+                        icon: const Icon(Icons.notifications_outlined, color: Colors.white),
                       ),
                       IconButton(
                         onPressed: _handleLogout,
@@ -242,6 +316,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildInvoiceCard() {
+    final hasUnpaid = _totalUnpaid > 0;
+    final amountStr = _totalUnpaid
+        .toStringAsFixed(0)
+        .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+
     return Container(
       margin: const EdgeInsets.only(top: 130, left: 24, right: 24),
       padding: const EdgeInsets.all(24),
@@ -249,79 +328,74 @@ class _HomeScreenState extends State<HomeScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5)),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Outstanding Common Fee',
-                style: TextStyle(color: Colors.grey),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.red[50],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: const [
-                    Icon(Icons.error_outline, size: 14, color: Colors.red),
-                    SizedBox(width: 4),
-                    Text(
-                      'Unpaid',
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+      child: !_invoiceLoaded
+          ? const SizedBox(
+              height: 60,
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Outstanding Common Fee', style: TextStyle(color: Colors.grey)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: hasUnpaid ? Colors.red[50] : Colors.green[50],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            hasUnpaid ? Icons.error_outline : Icons.check_circle_outline,
+                            size: 14,
+                            color: hasUnpaid ? Colors.red : Colors.green,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            hasUnpaid ? 'Unpaid' : 'Paid',
+                            style: TextStyle(
+                              color: hasUnpaid ? Colors.red : Colors.green,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'THB 5,250',
-            style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Due: Feb 15, 2026',
-                style: TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-              TextButton(
-                onPressed: () {
-                  // สามารถสั่งให้เปลี่ยนแท็บจากปุ่มนี้ได้ด้วย
-                  setState(() => _selectedIndex = 1); // ไปแท็บ Fees
-                },
-                child: Row(
-                  children: const [
-                    Text('View Details'),
-                    Icon(Icons.chevron_right, size: 16),
+                const SizedBox(height: 8),
+                Text(
+                  hasUnpaid ? 'THB $amountStr' : 'THB 0',
+                  style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.black87),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      hasUnpaid ? 'Due: $_dueDateStr' : 'ไม่มียอดค้างชำระ',
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                    TextButton(
+                      onPressed: () => setState(() => _selectedIndex = 1),
+                      child: const Row(
+                        children: [
+                          Text('View Details'),
+                          Icon(Icons.chevron_right, size: 16),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
-              ),
-            ],
-          ),
-        ],
-      ),
+              ],
+            ),
     );
   }
 
@@ -331,33 +405,15 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Quick Actions',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
+          const Text('Quick Actions', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _buildActionButton(Icons.payment, 'Pay Fee', Colors.blue, 1),
-              _buildActionButton(
-                Icons.build_rounded,
-                'Repair',
-                Colors.orange,
-                2,
-              ),
-              _buildActionButton(
-                Icons.inventory_2_rounded,
-                'Parcel',
-                Colors.green,
-                3,
-              ),
-              _buildActionButton(
-                Icons.person_add_rounded,
-                'Visitor',
-                Colors.teal,
-                4,
-              ),
+              _buildActionButton(Icons.build_rounded, 'Repair', Colors.orange, 2),
+              _buildActionButton(Icons.inventory_2_rounded, 'Parcel', Colors.green, 3),
+              _buildActionButton(Icons.person_add_rounded, 'Visitor', Colors.teal, 4),
             ],
           ),
         ],
@@ -365,22 +421,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ปรับให้ปุ่ม Quick Action รับค่า index ปลายทาง เพื่อกดแล้วลิงก์ไปแท็บอื่นได้เลย
-  Widget _buildActionButton(
-    IconData icon,
-    String label,
-    Color color,
-    int targetIndex,
-  ) {
+  Widget _buildActionButton(IconData icon, String label, Color color, int targetIndex) {
     return GestureDetector(
-      onTap: () {
-        setState(() => _selectedIndex = targetIndex);
-      },
+      onTap: () => setState(() => _selectedIndex = targetIndex),
       child: Column(
         children: [
           Container(
-            width: 60,
-            height: 60,
+            width: 60, height: 60,
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(16),
@@ -388,16 +435,16 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Icon(icon, color: color, size: 28),
           ),
           const SizedBox(height: 8),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-          ),
+          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
         ],
       ),
     );
   }
 
   Widget _buildUnitInfo() {
+    final roomDisplay = widget.roomNumber.isNotEmpty
+        ? 'Unit ${widget.roomNumber}'
+        : 'Unit -';
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Container(
@@ -413,30 +460,17 @@ class _HomeScreenState extends State<HomeScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Your Unit',
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
-                ),
+                const Text('Your Unit', style: TextStyle(color: Colors.grey, fontSize: 12)),
                 const SizedBox(height: 4),
-                const Text(
-                  'Building A, Unit 1234',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+                Text(roomDisplay, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ],
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(20),
-              ),
+              decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(20)),
               child: Text(
                 widget.userRole,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black54,
-                ),
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black54),
               ),
             ),
           ],
@@ -445,7 +479,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- ส่วนใหม่: ตารางกำหนดการสำคัญ (Important Schedule) ---
   Widget _buildImportantSchedule() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -455,15 +488,11 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'กำหนดการสำคัญ',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+              const Text('กำหนดการสำคัญ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               TextButton(onPressed: () {}, child: const Text('ดูปฏิทิน')),
             ],
           ),
           const SizedBox(height: 8),
-          // รายการกำหนดการ
           _buildScheduleItem(
             'งดจ่ายกระแสไฟฟ้าชั่วคราว',
             '10 เม.ย. 2026 | 09:00 - 12:00',
@@ -490,14 +519,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Widget ย่อยสำหรับแต่ละรายการในตารางเวลา
-  Widget _buildScheduleItem(
-    String title,
-    String time,
-    String location,
-    IconData icon,
-    Color color,
-  ) {
+  Widget _buildScheduleItem(String title, String time, String location, IconData icon, Color color) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -505,17 +527,12 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey.shade100),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: IntrinsicHeight(
         child: Row(
           children: [
-            // แถบสีด้านซ้ายบอกความสำคัญ
             Container(
               width: 6,
               decoration: BoxDecoration(
@@ -527,13 +544,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(width: 16),
-            // ไอคอนและรายละเอียด
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 16,
-                  horizontal: 8,
-                ),
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -542,50 +555,24 @@ class _HomeScreenState extends State<HomeScreen> {
                         Icon(icon, size: 18, color: color),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Text(
-                            title,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
+                          child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Icon(
-                          Icons.access_time,
-                          size: 14,
-                          color: Colors.grey,
-                        ),
+                        const Icon(Icons.access_time, size: 14, color: Colors.grey),
                         const SizedBox(width: 4),
-                        Text(
-                          time,
-                          style: const TextStyle(
-                            color: Colors.black87,
-                            fontSize: 12,
-                          ),
-                        ),
+                        Text(time, style: const TextStyle(color: Colors.black87, fontSize: 12)),
                       ],
                     ),
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        const Icon(
-                          Icons.location_on_outlined,
-                          size: 14,
-                          color: Colors.grey,
-                        ),
+                        const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
                         const SizedBox(width: 4),
-                        Text(
-                          location,
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 12,
-                          ),
-                        ),
+                        Text(location, style: const TextStyle(color: Colors.grey, fontSize: 12)),
                       ],
                     ),
                   ],
@@ -596,46 +583,6 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(width: 8),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildNotificationItem(String title, String time, Color dotColor) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.blue[50]!.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  time,
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

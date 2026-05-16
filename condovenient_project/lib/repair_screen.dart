@@ -170,7 +170,7 @@ class _RepairScreenState extends State<RepairScreen> {
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
-                value: _selectedCategory,
+                initialValue: _selectedCategory,
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: Colors.white,
