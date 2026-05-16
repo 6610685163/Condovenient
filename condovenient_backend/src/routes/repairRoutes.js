@@ -2,13 +2,19 @@ const express = require('express');
 const router = express.Router();
 const repairController = require('../controllers/repairController');
 
-// 1. ลูกบ้านส่งเรื่องแจ้งซ่อมใหม่
-router.post('/report', repairController.createRepairTicket);
+// 1. สร้างใบแจ้งซ่อมใหม่ (เปลี่ยนจาก /report เป็น /create ให้ตรงชื่อฟังก์ชัน)
+router.post('/create', repairController.createRequest);
 
-// 2. ดูรายการแจ้งซ่อมทั้งหมด (สำหรับนิติ/ช่าง) หรือดูเฉพาะของตัวเอง (สำหรับลูกบ้าน)
-router.get('/list/:userId?', repairController.getRepairList);
+// 2. ดูรายการแจ้งซ่อมทั้งหมด
+router.get('/list', repairController.getRepairList);
 
-// 3. อัปเดตสถานะการซ่อม (เช่น ช่างรับงานแล้ว หรือ ซ่อมเสร็จแล้ว)
-router.put('/update-status/:ticketId', repairController.updateRepairStatus);
+// 3. ดูรายการแจ้งซ่อมรายคน
+router.get('/list/:userId', repairController.getRepairList);
+
+// 4. มอบหมายช่าง (ใช้ PATCH เพราะเป็นการอัปเดตข้อมูลบางส่วนของ Ticket)
+router.patch('/assign/:ticketId', repairController.assignTechnician);
+
+// 5. ปิดงานซ่อม (เมื่อช่างทำงานเสร็จสิ้น)
+router.patch('/close/:ticketId', repairController.closeRequest);
 
 module.exports = router;

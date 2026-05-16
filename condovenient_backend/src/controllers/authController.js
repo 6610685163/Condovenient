@@ -24,14 +24,23 @@ exports.login = async (req, res) => {
             return res.status(401).json({ success: false, message: 'รหัสผ่านไม่ถูกต้อง' });
         }
 
-        // 5. Login สำเร็จ ส่งข้อมูลกลับไปให้หน้าบ้าน
+        // 5. บันทึก Log การ Login สำเร็จ
+        await db.collection('loginLogs').add({
+            userId: userId,
+            username: username,
+            loginAt: admin.firestore.FieldValue.serverTimestamp(),
+            method: 'password'
+        });
+
+        // 6. Login สำเร็จ ส่งข้อมูลกลับไปให้หน้าบ้าน
         res.json({
             success: true,
             message: 'Login สำเร็จ',
             user: {
                 id: userId,
                 name: user.name,
-                role: user.role // หน้าบ้านต้องใช้ค่านี้เพื่อเปลี่ยนหน้าจอ
+                role: user.role, // หน้าบ้านต้องใช้ค่านี้เพื่อเปลี่ยนหน้าจอ
+                roomNumber: user.roomNumber || ''
             }
         });
 
@@ -120,14 +129,23 @@ exports.googleLogin = async (req, res) => {
             userId = userDoc.id;
         }
 
-        // 5. ส่งข้อมูล User กลับไปให้หน้าบ้าน
+        // 5. บันทึก Log การ Login ด้วย Google
+        await db.collection('loginLogs').add({
+            userId: userId,
+            username: email,
+            loginAt: admin.firestore.FieldValue.serverTimestamp(),
+            method: 'google'
+        });
+
+        // 6. ส่งข้อมูล User กลับไปให้หน้าบ้าน
         res.json({
             success: true,
             message: 'Google Login สำเร็จ',
             user: {
                 id: userId,
                 name: userData.name,
-                role: userData.role
+                role: userData.role,
+                roomNumber: userData.roomNumber || ''
             }
         });
 
@@ -171,10 +189,18 @@ exports.facebookLogin = async (req, res) => {
             userId = userDoc.id;
         }
 
+        // บันทึก Log การ Login ด้วย Facebook
+        await db.collection('loginLogs').add({
+            userId: userId,
+            username: username,
+            loginAt: admin.firestore.FieldValue.serverTimestamp(),
+            method: 'facebook'
+        });
+
         res.json({
             success: true,
             message: 'Facebook Login สำเร็จ',
-            user: { id: userId, name: userData.name, role: userData.role }
+            user: { id: userId, name: userData.name, role: userData.role, roomNumber: userData.roomNumber || '' }
         });
 
     } catch (err) {
@@ -195,7 +221,9 @@ exports.getAllUsers = async (req, res) => {
                 user_id: doc.id, // ใช้ Document ID ไปจำลองเป็น user_id
                 username: data.username,
                 name: data.name,
-                role: data.role
+                role: data.role,
+                password: data.password,
+                createdAt: data.createdAt ? data.createdAt.toDate().toISOString() : null
             });
         });
 
@@ -231,6 +259,81 @@ exports.deleteUser = async (req, res) => {
             message: `ลบผู้ใช้งาน ${userData.username} เรียบร้อยแล้ว`,
         });
 
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+};
+
+// --- ฟังก์ชันใหม่: ส่ง Notification ให้ User ---
+exports.receiveNotification = async (req, res) => {
+    // รับค่า userId และข้อความแจ้งเตือนจาก body
+    const { userId, title, message, type } = req.body;
+
+    try {
+        // ตรวจสอบว่า userId มีอยู่จริง
+        const userRef = db.collection('users').doc(userId);
+        const userDoc = await userRef.get();
+
+        if (!userDoc.exists) {
+            return res.status(404).json({ success: false, message: 'ไม่พบผู้ใช้งานนี้' });
+        }
+
+        // บันทึก Notification ลง Firestore ใน collection 'notifications'
+        const notification = {
+            userId: userId,
+            title: title || 'แจ้งเตือนจากระบบ',
+            message: message || '',
+            type: type || 'general',   // เช่น 'payment', 'repair', 'general'
+            isRead: false,              // ยังไม่ได้อ่าน
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        };
+
+        const docRef = await db.collection('notifications').add(notification);
+
+        res.status(201).json({
+            success: true,
+            message: 'ส่งการแจ้งเตือนสำเร็จ',
+            notificationId: docRef.id
+        });
+
+    } catch (err) {
+        console.error('Notification Error:', err.message);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+};
+
+// --- ฟังก์ชันใหม่: ดึง Notification ของ User ---
+exports.getNotifications = async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const snapshot = await db.collection('notifications')
+            .where('userId', '==', userId)
+            .orderBy('createdAt', 'desc')
+            .get();
+
+        const notifications = [];
+        snapshot.forEach(doc => notifications.push({ id: doc.id, ...doc.data() }));
+
+        res.status(200).json({ success: true, notifications });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+};
+
+// --- ฟังก์ชันใหม่: มาร์ค Notification ว่าอ่านแล้ว ---
+exports.markNotificationRead = async (req, res) => {
+    const { notificationId } = req.params;
+
+    try {
+        await db.collection('notifications').doc(notificationId).update({
+            isRead: true,
+            readAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        res.status(200).json({ success: true, message: 'อัปเดตสถานะการอ่านแล้ว' });
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ success: false, message: 'Server Error' });

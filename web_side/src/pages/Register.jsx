@@ -1,7 +1,69 @@
 // src/pages/Register.jsx
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+
+const API = 'http://localhost:3000';
 
 const Register = () => {
+    const navigate = useNavigate();
+    const [formData, setFormData] = useState({
+        name: '',
+        username: '',
+        password: '',
+        confirmPassword: '',
+        role: 'resident'
+    });
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData({ ...formData, [name]: value });
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        setSuccess('');
+
+        // Validation
+        if (!formData.name || !formData.username || !formData.password) {
+            setError('กรุณากรอกข้อมูลให้ครบ');
+            return;
+        }
+
+        if (formData.password !== formData.confirmPassword) {
+            setError('รหัสผ่านไม่ตรงกัน');
+            return;
+        }
+
+        if (formData.password.length < 6) {
+            setError('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const response = await axios.post(`${API}/api/auth/register`, {
+                name: formData.name,
+                username: formData.username,
+                password: formData.password,
+                role: formData.role
+            });
+
+            if (response.data.success) {
+                setSuccess('สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ');
+                setTimeout(() => navigate('/login'), 2000);
+            }
+        } catch (err) {
+            setError(err.response?.data?.message || 'เกิดข้อผิดพลาดในการสมัครสมาชิก');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="min-h-screen flex bg-white">
             {/* 1. ส่วนฟอร์ม (ซ้าย) */}
@@ -9,63 +71,97 @@ const Register = () => {
                 <div className="w-full max-w-md space-y-8">
 
                     <div className="text-left">
-                        <h2 className="text-3xl font-bold text-gray-900">Create your Free Account</h2>
+                        <h2 className="text-3xl font-bold text-gray-900">สมัครสมาชิก</h2>
+                        <p className="text-gray-600 mt-2">สร้างบัญชีใหม่เพื่อใช้งาน Condovenient</p>
                     </div>
 
-                    <form className="mt-8 space-y-6">
+                    {error && (
+                        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                            {error}
+                        </div>
+                    )}
+
+                    {success && (
+                        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
+                            {success}
+                        </div>
+                    )}
+
+                    <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
                         <div className="space-y-4">
                             <div>
-                                <label className="text-sm font-medium text-gray-500">Full Name</label>
+                                <label className="text-sm font-medium text-gray-500">ชื่อ-นามสกุล</label>
                                 <input
                                     type="text"
-                                    placeholder="Enter your Full Name here"
+                                    name="name"
+                                    placeholder="กรุณาระบุชื่อ-นามสกุล"
+                                    value={formData.name}
+                                    onChange={handleChange}
                                     className="w-full mt-1 px-4 py-3 bg-gray-100 border-transparent rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                                 />
                             </div>
                             <div>
-                                <label className="text-sm font-medium text-gray-500">Email</label>
+                                <label className="text-sm font-medium text-gray-500">ชื่อผู้ใช้ (Username)</label>
                                 <input
-                                    type="email"
-                                    placeholder="Enter your Email here"
+                                    type="text"
+                                    name="username"
+                                    placeholder="เช่น john_doe"
+                                    value={formData.username}
+                                    onChange={handleChange}
                                     className="w-full mt-1 px-4 py-3 bg-gray-100 border-transparent rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                                 />
                             </div>
                             <div>
-                                <label className="text-sm font-medium text-gray-500">Password</label>
+                                <label className="text-sm font-medium text-gray-500">รหัสผ่าน</label>
                                 <input
                                     type="password"
-                                    placeholder="Enter your Password here"
+                                    name="password"
+                                    placeholder="กรุณาระบุรหัสผ่าน (อย่างน้อย 6 ตัวอักษร)"
+                                    value={formData.password}
+                                    onChange={handleChange}
                                     className="w-full mt-1 px-4 py-3 bg-gray-100 border-transparent rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                                 />
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium text-gray-500">ยืนยันรหัสผ่าน</label>
+                                <input
+                                    type="password"
+                                    name="confirmPassword"
+                                    placeholder="กรุณายืนยันรหัสผ่าน"
+                                    value={formData.confirmPassword}
+                                    onChange={handleChange}
+                                    className="w-full mt-1 px-4 py-3 bg-gray-100 border-transparent rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium text-gray-500">บทบาท</label>
+                                <select
+                                    name="role"
+                                    value={formData.role}
+                                    onChange={handleChange}
+                                    className="w-full mt-1 px-4 py-3 bg-gray-100 border-transparent rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                >
+                                    <option value="resident">ลูกบ้าน</option>
+                                    <option value="admin">ผู้ดูแลระบบ</option>
+                                    <option value="technician">ช่าง</option>
+                                </select>
                             </div>
                         </div>
 
-                        <button type="submit" className="w-full py-3 px-4 bg-yellow-400 hover:bg-yellow-500 text-black font-bold rounded-lg transition-colors shadow-md">
-                            Create Account
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full py-3 px-4 bg-yellow-400 hover:bg-yellow-500 disabled:bg-gray-400 text-black font-bold rounded-lg transition-colors shadow-md"
+                        >
+                            {loading ? 'กำลังสมัครสมาชิก...' : 'สมัครสมาชิก'}
                         </button>
 
                         <p className="text-center text-sm text-gray-600">
-                            Already have an account?
+                            มีบัญชีแล้ว?
                             <Link to="/login" className="ml-1 text-yellow-500 font-bold hover:underline">
-                                Log in
+                                เข้าสู่ระบบ
                             </Link>
                         </p>
-
-                        <div className="relative my-6">
-                            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
-                            <div className="relative flex justify-center text-sm"><span className="px-2 bg-white text-gray-500">- OR -</span></div>
-                        </div>
-
-                        <div className="flex gap-4">
-                            <button type="button" className="w-1/2 py-2 px-4 border border-gray-300 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
-                                <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
-                                <span className="text-sm font-medium text-gray-700">Google</span>
-                            </button>
-                            <button type="button" className="w-1/2 py-2 px-4 border border-gray-300 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
-                                <img src="https://www.svgrepo.com/show/475647/facebook-color.svg" className="w-5 h-5" alt="Facebook" />
-                                <span className="text-sm font-medium text-gray-700">Facebook</span>
-                            </button>
-                        </div>
                     </form>
                 </div>
             </div>

@@ -13,15 +13,23 @@ app.use('/api/auth', authRoutes);
 
 // paymentRoutes 
 const paymentRoutes = require('./src/routes/paymentRoutes');
-app.use('/api/payments', paymentRoutes);
+app.use('/api/payment', paymentRoutes);
 
 // repairRoutes 
 const repairRoutes = require('./src/routes/repairRoutes');
-app.use('/api/repairs', repairRoutes);
+app.use('/api/repair', repairRoutes);
 
 // visitorRoutes
 const visitorRoutes = require('./src/routes/visitorRoutes');
 app.use('/api/visitors', visitorRoutes);
+
+// parcelRoutes
+const parcelRoutes = require('./src/routes/parcelRoutes');
+app.use('/api/parcel', parcelRoutes);
+
+// accessLogRoutes
+const accessLogRoutes = require('./src/routes/accessLogRoutes');
+app.use('/api/access-log', accessLogRoutes);
 
 // 3. Route สำหรับทดสอบ
 app.get('/', (req, res) => {
@@ -32,7 +40,3 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
     console.log(`🚀 Server is running on port ${PORT}`);
 });
-
-// 
-const paymentRoutes = require('./src/routes/paymentRoutes');
-app.use('/api/payments', paymentRoutes);

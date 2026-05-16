@@ -8,4 +8,12 @@ router.post('/pay-common-fee', paymentController.processPayment);
 // เส้นทางสำหรับดึงประวัติการชำระเงินของห้องนั้นๆ
 router.get('/payment-history/:roomId', paymentController.getPaymentHistory);
 
+// --- Routes สำหรับ Invoice ---
+router.post('/invoices', paymentController.createInvoice);
+router.get('/invoices/:userId', paymentController.getInvoices);
+
+// --- Routes สำหรับ Bank API Verification และ Receipt ---
+router.post('/verify/:paymentId', paymentController.verifyBankPayment);
+router.get('/receipts/:receiptId', paymentController.getReceipt);
+
 module.exports = router;
