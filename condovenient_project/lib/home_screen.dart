@@ -9,11 +9,13 @@ import 'parcel_screen.dart';
 class HomeScreen extends StatefulWidget {
   final String userName;
   final String userRole;
+  final String userId;
 
   const HomeScreen({
     super.key,
     required this.userName,
     this.userRole = 'Resident',
+    this.userId = '',
   });
 
   @override
@@ -65,16 +67,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // --- 1. ฟังก์ชันเลือกหน้าจอที่จะแสดง ---
-  Widget _getSelectedPage() {
+ Widget _getSelectedPage() {
     switch (_selectedIndex) {
       case 0:
-        return _buildHomeTab(); // หน้า Home เดิม
+        return _buildHomeTab();
       case 1:
-        return const FeesScreen(); // เรียกใช้หน้า FeesScreen
+        return FeesScreen(userId: widget.userId, roomId: widget.userId);
       case 2:
-        return const RepairScreen(); // เรียกใช้หน้าแจ้งซ่อมที่เราเพิ่งสร้าง
+        return RepairScreen(userId: widget.userId, roomNumber: widget.userRole);
       case 3:
-        return const ParcelScreen(); // เรียกใช้หน้า ParcelScreen ที่เราสร้างไว้แล้ว
+        return const ParcelScreen();
       case 4:
         return _buildPlaceholderTab(
           'ข่าวสารและประกาศ',
