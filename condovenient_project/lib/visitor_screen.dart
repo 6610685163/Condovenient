@@ -6,11 +6,7 @@ class VisitorScreen extends StatefulWidget {
   final String userId;
   final String roomNumber;
 
-  const VisitorScreen({
-    super.key,
-    this.userId = '',
-    this.roomNumber = '',
-  });
+  const VisitorScreen({super.key, this.userId = '', this.roomNumber = ''});
 
   @override
   State<VisitorScreen> createState() => _VisitorScreenState();
@@ -48,6 +44,8 @@ class _VisitorScreenState extends State<VisitorScreen> {
             'plateNumber': _plateController.text.trim().toUpperCase(),
             'contactRoom': widget.roomNumber,
             'purpose': _purposeController.text.trim(),
+            'addedBy':
+                'ลูกบ้านห้อง ${widget.roomNumber}', // <-- เพิ่มส่วนนี้ เพื่อส่งให้ฝั่งเว็บรู้ว่าลูกบ้านห้องไหนเป็นคนแอด
           }),
         );
 
@@ -253,29 +251,7 @@ class _VisitorScreenState extends State<VisitorScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // ห้องที่ติดต่อ (Read-only)
-                  const Text(
-                    'ห้องที่ติดต่อ',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    initialValue: widget.roomNumber,
-                    readOnly: true,
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: Colors.grey[200],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
+                  // ลบช่องกรอก "ห้องที่ติดต่อ" ออกแล้ว ระบบจะส่ง widget.roomNumber ไปเอง
 
                   // วัตถุประสงค์
                   const Text(

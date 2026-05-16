@@ -2,13 +2,15 @@ const { admin, db } = require('../config/firebase');
 
 exports.visitorCheckIn = async (req, res) => {
     try {
-        const { visitorName, plateNumber, contactRoom, purpose } = req.body;
+        // เพิ่มการรับค่า addedBy มาจากแอปหรือเว็บ
+        const { visitorName, plateNumber, contactRoom, purpose, addedBy } = req.body;
 
         const visitorData = {
             visitorName,
             plateNumber,
             contactRoom,
             purpose,
+            addedBy: addedBy || 'ไม่ระบุ', // <-- บันทึกคนทำรายการลงฐานข้อมูล
             checkInTime: admin.firestore.FieldValue.serverTimestamp(),
             checkOutTime: null,
             status: 'inside'
