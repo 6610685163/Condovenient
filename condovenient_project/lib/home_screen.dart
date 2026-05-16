@@ -1,19 +1,28 @@
 import 'package:flutter/material.dart';
-import 'fees_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'dart:async';
+import 'login_screen.dart';
 import 'repair_screen.dart';
+import 'fees_screen.dart';
 import 'parcel_screen.dart';
 import 'visitor_screen.dart';
-import 'notification_screen.dart';
-import 'login_screen.dart';
+// import 'notification_screen.dart'; // เปิดคอมเมนต์ถ้าคุณมีไฟล์หน้า Notification แล้ว
 
 class HomeScreen extends StatefulWidget {
   final String userName;
   final String userRole;
+  final String userId;
+  final String roomNumber;
 
   const HomeScreen({
     super.key,
     required this.userName,
     this.userRole = 'Resident',
+    this.userId = '',
+    this.roomNumber = '',
   });
 
   @override
@@ -22,13 +31,159 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  int _unreadCount = 0;
+  Timer? _notifTimer;
+  final String _backendUrl = 'http://10.0.2.2:3000';
 
-  void _handleLogout() {
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => const LoginScreen()),
-      (route) => false,
+  double _totalUnpaid = 0;
+  String _dueDateStr = '-';
+  bool _invoiceLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUnreadCount();
+    _fetchInvoiceSummary();
+    _notifTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _fetchUnreadCount();
+      _fetchInvoiceSummary();
+    });
+  }
+
+  @override
+  void dispose() {
+    _notifTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetchUnreadCount() async {
+    if (widget.userId.isEmpty) return;
+    try {
+      final response = await http
+          .get(
+            Uri.parse('$_backendUrl/api/auth/notifications/${widget.userId}'),
+          )
+          .timeout(const Duration(seconds: 8));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && mounted) {
+          final notifs = List<dynamic>.from(data['notifications'] ?? []);
+          setState(() {
+            _unreadCount = notifs.where((n) => n['isRead'] == false).length;
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _fetchInvoiceSummary() async {
+    if (widget.userId.isEmpty) {
+      if (mounted) setState(() => _invoiceLoaded = true);
+      return;
+    }
+    try {
+      final response = await http
+          .get(Uri.parse('$_backendUrl/api/payment/invoices/${widget.userId}'))
+          .timeout(const Duration(seconds: 8));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final invoices = List<Map<String, dynamic>>.from(
+          data['invoices'] ?? [],
+        );
+        final unpaid = invoices
+            .where((inv) => inv['status'] == 'pending')
+            .toList();
+        double total = unpaid.fold(
+          0.0,
+          (sum, inv) => sum + ((inv['amount'] ?? 0) as num).toDouble(),
+        );
+        String dueDate = '-';
+        if (unpaid.isNotEmpty) {
+          final raw = unpaid.first['dueDate'] ?? '';
+          if (raw.isNotEmpty) {
+            try {
+              final dt = DateTime.tryParse(raw);
+              if (dt != null) {
+                const months = [
+                  '',
+                  'Jan',
+                  'Feb',
+                  'Mar',
+                  'Apr',
+                  'May',
+                  'Jun',
+                  'Jul',
+                  'Aug',
+                  'Sep',
+                  'Oct',
+                  'Nov',
+                  'Dec',
+                ];
+                dueDate = '${months[dt.month]} ${dt.day}, ${dt.year}';
+              } else {
+                dueDate = raw;
+              }
+            } catch (_) {
+              dueDate = raw;
+            }
+          }
+        }
+        if (mounted) {
+          setState(() {
+            _totalUnpaid = total;
+            _dueDateStr = dueDate;
+            _invoiceLoaded = true;
+          });
+        }
+      } else {
+        if (mounted) setState(() => _invoiceLoaded = true);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _invoiceLoaded = true);
+    }
+  }
+
+  void _handleLogout() async {
+    bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: const Text('ออกจากระบบ', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'คุณแน่ใจหรือไม่ว่าต้องการออกจากระบบ?',
+          style: TextStyle(color: Colors.grey),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('ยกเลิก', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('ยืนยัน', style: TextStyle(color: Colors.amber)),
+          ),
+        ],
+      ),
     );
+
+    if (confirm == true) {
+      try {
+        await FirebaseAuth.instance.signOut();
+        await GoogleSignIn().signOut();
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const LoginScreen()),
+            (route) => false,
+          );
+        }
+      } catch (e) {
+        if (mounted)
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('เกิดข้อผิดพลาด: $e')));
+      }
+    }
   }
 
   Widget _getSelectedPage() {
@@ -36,13 +191,19 @@ class _HomeScreenState extends State<HomeScreen> {
       case 0:
         return _buildHomeTab();
       case 1:
-        return const FeesScreen();
+        return FeesScreen(userId: widget.userId, roomId: widget.roomNumber);
       case 2:
-        return const RepairScreen();
+        return RepairScreen(
+          userId: widget.userId,
+          roomNumber: widget.roomNumber,
+        );
       case 3:
-        return const ParcelScreen();
+        return ParcelScreen(userId: widget.userId);
       case 4:
-        return const VisitorScreen();
+        return VisitorScreen(
+          userId: widget.userId,
+          roomNumber: widget.roomNumber,
+        );
       default:
         return _buildHomeTab();
     }
@@ -60,6 +221,70 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 24),
           _buildImportantSchedule(),
           const SizedBox(height: 100),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF121212),
+      body: _getSelectedPage(),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: (index) => setState(() => _selectedIndex = index),
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: const Color(0xFF1E1E1E),
+        selectedItemColor: Colors.amber,
+        unselectedItemColor: Colors.grey,
+        showUnselectedLabels: true,
+        items: [
+          const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.receipt_long),
+            label: 'Fees',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.build),
+            label: 'Repair',
+          ),
+          BottomNavigationBarItem(
+            icon: Stack(
+              children: [
+                const Icon(Icons.inventory_2),
+                if (_unreadCount > 0)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(
+                        color: Colors.redAccent,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 14,
+                        minHeight: 14,
+                      ),
+                      child: Text(
+                        '$_unreadCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            label: 'Parcel',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.person_add_rounded),
+            label: 'Visitor',
+          ),
         ],
       ),
     );
@@ -120,14 +345,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   Row(
                     children: [
                       IconButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const NotificationScreen(),
-                            ),
-                          );
-                        },
+                        onPressed:
+                            () {}, // ใส่ Navigator.push ไปหน้า Notification ตรงนี้
                         icon: const Icon(
                           Icons.notifications_outlined,
                           color: Colors.amber,
@@ -150,6 +369,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildInvoiceCard() {
+    final hasUnpaid = _totalUnpaid > 0;
+    final amountStr = _totalUnpaid
+        .toStringAsFixed(0)
+        .replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (m) => '${m[1]},',
+        );
+
     return Container(
       margin: const EdgeInsets.only(top: 130, left: 24, right: 24),
       padding: const EdgeInsets.all(24),
@@ -158,63 +385,101 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color(0xFF333333)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Outstanding Common Fee',
-                style: TextStyle(color: Colors.grey),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  'Unpaid',
-                  style: TextStyle(
-                    color: Colors.redAccent,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
+      child: !_invoiceLoaded
+          ? const SizedBox(
+              height: 60,
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: Colors.amber,
+                  strokeWidth: 2,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'THB 5,250',
-            style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              color: Colors.amber,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Due: Feb 15, 2026',
-                style: TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-              TextButton(
-                onPressed: () => setState(() => _selectedIndex = 1),
-                child: Row(
-                  children: const [
-                    Text('View Details', style: TextStyle(color: Colors.amber)),
-                    Icon(Icons.chevron_right, size: 16, color: Colors.amber),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Outstanding Common Fee',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: hasUnpaid
+                            ? Colors.red.withOpacity(0.1)
+                            : Colors.green.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            hasUnpaid
+                                ? Icons.error_outline
+                                : Icons.check_circle_outline,
+                            size: 14,
+                            color: hasUnpaid
+                                ? Colors.redAccent
+                                : Colors.greenAccent,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            hasUnpaid ? 'Unpaid' : 'Paid',
+                            style: TextStyle(
+                              color: hasUnpaid
+                                  ? Colors.redAccent
+                                  : Colors.greenAccent,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
-              ),
-            ],
-          ),
-        ],
-      ),
+                const SizedBox(height: 8),
+                Text(
+                  hasUnpaid ? 'THB $amountStr' : 'THB 0',
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.amber,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      hasUnpaid ? 'Due: $_dueDateStr' : 'ไม่มียอดค้างชำระ',
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                    TextButton(
+                      onPressed: () => setState(() => _selectedIndex = 1),
+                      child: const Row(
+                        children: [
+                          Text(
+                            'View Details',
+                            style: TextStyle(color: Colors.amber),
+                          ),
+                          Icon(
+                            Icons.chevron_right,
+                            size: 16,
+                            color: Colors.amber,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
     );
   }
 
@@ -297,6 +562,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildUnitInfo() {
+    final roomDisplay = widget.roomNumber.isNotEmpty
+        ? 'Unit ${widget.roomNumber}'
+        : 'Unit -';
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Container(
@@ -311,15 +579,15 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
+              children: [
+                const Text(
                   'Your Unit',
                   style: TextStyle(color: Colors.grey, fontSize: 12),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  'Building A, Unit 1234',
-                  style: TextStyle(
+                  roomDisplay,
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -467,39 +735,6 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(width: 8),
           ],
         ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF121212),
-      body: _getSelectedPage(),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: const Color(0xFF1E1E1E),
-        selectedItemColor: Colors.amber,
-        unselectedItemColor: Colors.grey,
-        showUnselectedLabels: true,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_long),
-            label: 'Fees',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.build), label: 'Repair'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.inventory_2),
-            label: 'Parcel',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_add_rounded),
-            label: 'Visitor',
-          ),
-        ],
       ),
     );
   }

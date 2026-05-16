@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class RepairScreen extends StatefulWidget {
-  const RepairScreen({super.key});
+  final String userId;
+  final String roomNumber;
+  const RepairScreen({super.key, this.userId = '', this.roomNumber = ''});
 
   @override
   State<RepairScreen> createState() => _RepairScreenState();
@@ -9,6 +13,8 @@ class RepairScreen extends StatefulWidget {
 
 class _RepairScreenState extends State<RepairScreen> {
   final _formKey = GlobalKey<FormState>();
+  final String _backendUrl = 'http://10.0.2.2:3000';
+
   String? _selectedCategory;
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
@@ -34,67 +40,98 @@ class _RepairScreenState extends State<RepairScreen> {
   void _submitRepair() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isSubmitting = true);
-      await Future.delayed(const Duration(milliseconds: 1500));
+      try {
+        final response = await http.post(
+          Uri.parse('$_backendUrl/api/repair/create'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'userId': widget.userId,
+            'roomNumber': widget.roomNumber,
+            'title': _titleController.text.trim(),
+            'description': _descController.text.trim(),
+            'category': _selectedCategory,
+            'priority': 'normal',
+          }),
+        );
+        final data = jsonDecode(response.body);
 
-      if (mounted) {
-        setState(() => _isSubmitting = false);
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            backgroundColor: const Color(0xFF1E1E1E),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-              side: const BorderSide(color: Color(0xFF2A2A2A)),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.check_circle, color: Colors.amber, size: 64),
-                const SizedBox(height: 16),
-                const Text(
-                  'ส่งเรื่องแจ้งซ่อมสำเร็จ',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+        if (mounted) {
+          setState(() => _isSubmitting = false);
+          if (response.statusCode == 201) {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                backgroundColor: const Color(0xFF1E1E1E),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  side: const BorderSide(color: Color(0xFF2A2A2A)),
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'ช่างจะติดต่อกลับภายใน 24 ชั่วโมง',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _titleController.clear();
-                      _descController.clear();
-                      setState(() {
-                        _selectedCategory = null;
-                        _hasImage = false;
-                      });
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.amber,
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.check_circle,
+                      color: Colors.amber,
+                      size: 64,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'ส่งเรื่องแจ้งซ่อมสำเร็จ',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
-                    child: const Text(
-                      'ตกลง',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'ช่างจะติดต่อกลับไปภายใน 24 ชั่วโมง',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey),
                     ),
-                  ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _titleController.clear();
+                          _descController.clear();
+                          setState(() {
+                            _selectedCategory = null;
+                            _hasImage = false;
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.amber,
+                          foregroundColor: Colors.black,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: const Text(
+                          'ตกลง',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-        );
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(data['error'] ?? 'เกิดข้อผิดพลาด')),
+            );
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isSubmitting = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('ไม่สามารถเชื่อมต่อ Server ได้: $e')),
+          );
+        }
       }
     }
   }
@@ -155,12 +192,14 @@ class _RepairScreenState extends State<RepairScreen> {
                   'เลือกหมวดหมู่ที่ต้องการแจ้งซ่อม',
                   Icons.category_outlined,
                 ),
-                items: _categories.map((category) {
-                  return DropdownMenuItem(
-                    value: category,
-                    child: Text(category),
-                  );
-                }).toList(),
+                items: _categories
+                    .map(
+                      (category) => DropdownMenuItem(
+                        value: category,
+                        child: Text(category),
+                      ),
+                    )
+                    .toList(),
                 onChanged: (value) => setState(() => _selectedCategory = value),
                 validator: (value) =>
                     value == null ? 'กรุณาเลือกหมวดหมู่' : null,
