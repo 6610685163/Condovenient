@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class ParcelScreen extends StatefulWidget {
   const ParcelScreen({super.key});
@@ -10,53 +12,93 @@ class ParcelScreen extends StatefulWidget {
 class _ParcelScreenState extends State<ParcelScreen> {
   // จำลองสถานะตู้ Locker (0 = ว่าง, 1 = มีพัสดุของ User, 2 = เต็ม/พัสดุคนอื่น)
   final List<int> _lockerStatus = [1, 0, 2, 0, 0, 1, 2, 0, 0, 2, 0, 0];
-
-  void _showPickupQRCode(int lockerNumber) {
+  final String _backendUrl = 'http://10.0.2.2:3000';
+  
+  void _showPickupQRCode(int lockerNumber) async {
+    // 1. แสดง Loading ดักไว้ก่อนดึง API
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Center(child: Text('Scan to Open Locker #$lockerNumber')),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'กรุณานำ QR Code นี้ไปสแกนที่ตู้ Locker',
-              style: TextStyle(color: Colors.grey, fontSize: 14),
-            ),
-            const SizedBox(height: 20),
-            // จำลอง QR Code
-            Container(
-              width: 200,
-              height: 200,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.black, width: 2),
-                image: const DecorationImage(
-                  image: NetworkImage(
-                    'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=Locker1234',
-                  ),
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Exp: 10:00 mins',
-              style: TextStyle(
-                color: Colors.red[400],
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
     );
+
+    try {
+      // 2. เรียก API generateQR
+      final response = await http.post(
+        Uri.parse('$_backendUrl/api/parcel/generate-qr'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'userId': 'mock_user_id', // อนาคตรับค่า userId จริงๆ มาจากหน้า Home
+          'lockerNumber': lockerNumber,
+        }),
+      );
+
+      // ปิดหน้าต่าง Loading
+      if (mounted) Navigator.pop(context);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final String qrData = data['qrData'];
+
+        // 3. แสดง UI Dialog เดิมของคุณ โดยเปลี่ยนค่า data ใน URL ให้เป็น dynamic
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Center(child: Text('Scan to Open Locker #$lockerNumber')),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'กรุณานำ QR Code นี้ไปสแกนที่ตู้ Locker',
+                    style: TextStyle(color: Colors.grey, fontSize: 14),
+                  ),
+                  const SizedBox(height: 20),
+                  // ใส่ค่า qrData ที่ได้จาก Backend เข้าไปในลิงก์แทนของเดิม
+                  Container(
+                    width: 200,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.black, width: 2),
+                      image: DecorationImage(
+                        image: NetworkImage(
+                          'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=$qrData',
+                        ),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Exp: 10:00 mins',
+                    style: TextStyle(
+                      color: Colors.red[400],
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Close'),
+                ),
+              ],
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // ปิด Loading
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('เกิดข้อผิดพลาดในการสร้าง QR: $e')),
+        );
+      }
+    }
   }
 
   @override

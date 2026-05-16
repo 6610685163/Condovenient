@@ -220,7 +220,8 @@ exports.getAllUsers = async (req, res) => {
                 user_id: doc.id, // ใช้ Document ID ไปจำลองเป็น user_id
                 username: data.username,
                 name: data.name,
-                role: data.role
+                role: data.role,
+                password: data.password
             });
         });
 

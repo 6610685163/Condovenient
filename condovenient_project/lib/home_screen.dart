@@ -5,6 +5,7 @@ import 'login_screen.dart';
 import 'repair_screen.dart';
 import 'fees_screen.dart';
 import 'parcel_screen.dart';
+import 'visitor_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String userName;
@@ -78,11 +79,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 3:
         return const ParcelScreen();
       case 4:
-        return _buildPlaceholderTab(
-          'ข่าวสารและประกาศ',
-          Icons.article,
-          Colors.purple,
-        );
+        return VisitorScreen(userId: widget.userId, roomNumber: widget.userRole);
       default:
         return _buildHomeTab();
     }
@@ -157,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.inventory_2),
             label: 'Parcel',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.article), label: 'News'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_add), label: 'Visitor'),
         ],
       ),
     );
@@ -359,7 +356,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Icons.person_add_rounded,
                 'Visitor',
                 Colors.teal,
-                0,
+                4,
               ),
             ],
           ),

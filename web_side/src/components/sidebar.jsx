@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Users, Wrench,
-  Receipt, Bell, LogOut
+  Receipt, Bell, LogOut, Package, UserCheck
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
@@ -18,6 +18,8 @@ const Sidebar = () => {
     { icon: Users,           text: 'จัดการลูกบ้าน',  path: '/residents' },
     { icon: Receipt,         text: 'Invoice',         path: '/invoices' },
     { icon: Wrench,          text: 'แจ้งซ่อม',        path: '/repairs' },
+    { icon: Package,         text: 'พัสดุ',           path: '/parcels' },
+    { icon: UserCheck,       text: 'ผู้มาติดต่อ',      path: '/visitors' },
     { icon: Bell,            text: 'Notifications',   path: '/notifications' },
   ];
 

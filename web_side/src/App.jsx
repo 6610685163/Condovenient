@@ -7,6 +7,8 @@ import Residents from './pages/Residents';
 import Invoices from './pages/Invoices';
 import Repairs from './pages/Repairs';
 import Notifications from './pages/Notifications';
+import Parcels from './pages/Parcels';
+import Visitors from './pages/Visitors';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -24,6 +26,8 @@ function App() {
           <Route path="invoices" element={<Invoices />} />
           <Route path="repairs" element={<Repairs />} />
           <Route path="notifications" element={<Notifications />} />
+          <Route path="parcels" element={<Parcels />} />
+          <Route path="visitors" element={<Visitors />} />
         </Route>
 
         {/* กลุ่ม 2: หน้าที่ไม่ต้องมี Sidebar */}

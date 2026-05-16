@@ -23,6 +23,14 @@ app.use('/api/repair', repairRoutes);
 const visitorRoutes = require('./src/routes/visitorRoutes');
 app.use('/api/visitors', visitorRoutes);
 
+// parcelRoutes
+const parcelRoutes = require('./src/routes/parcelRoutes');
+app.use('/api/parcel', parcelRoutes);
+
+// accessLogRoutes
+const accessLogRoutes = require('./src/routes/accessLogRoutes');
+app.use('/api/access-log', accessLogRoutes);
+
 // 3. Route สำหรับทดสอบ
 app.get('/', (req, res) => {
     res.send('✅ Condovenient Backend is Running!');

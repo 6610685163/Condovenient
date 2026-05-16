@@ -1,5 +1,4 @@
-const admin = require('../config/firebase');
-const db = admin.firestore();
+const { db, admin } = require('../config/firebase');
 
 // --- ฟังก์ชัน: บันทึกประวัติการเข้า (Create Log Entry) ---
 exports.logEntry = async (req, res) => {
@@ -76,4 +75,4 @@ exports.getAccessHistory = async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
-};
+}
