@@ -44,6 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
               userName: data['user']['name'] ?? 'User',
               userRole: data['user']['role'] ?? 'Resident',
               userId: data['user']['id'] ?? '',
+              roomNumber: data['user']['roomNumber'] ?? '',
             ),
           ),
         );

@@ -1,17 +1,24 @@
-// src/components/ProtectedRoute.jsx
 import { Navigate } from 'react-router-dom';
 
 const ProtectedRoute = ({ children }) => {
-  // ตรวจสอบว่ามี "กุญแจ" (Token) ในกระเป๋าหรือยัง
-  // (ในการทำงานจริง เราจะเช็คกับ Backend แต่ตอนนี้เช็ค localStorage ไปก่อน)
-  const isAuthenticated = localStorage.getItem("user_token");
+  const raw = localStorage.getItem('user_token');
 
-  if (!isAuthenticated) {
-    // ถ้าไม่มีกุญแจ ให้ถีบไปหน้า Login
+  if (!raw) {
     return <Navigate to="/login" replace />;
   }
 
-  // ถ้ามีกุญแจ อนุญาตให้เข้าได้ (แสดงเนื้อหาข้างใน)
+  try {
+    const user = JSON.parse(raw);
+    if (user.role !== 'admin') {
+      // ล็อกอินแล้วแต่ไม่ใช่ admin → เตะออก กลับ login
+      localStorage.removeItem('user_token');
+      return <Navigate to="/login" replace state={{ error: 'คุณไม่มีสิทธิ์เข้าใช้งานระบบนี้' }} />;
+    }
+  } catch {
+    localStorage.removeItem('user_token');
+    return <Navigate to="/login" replace />;
+  }
+
   return children;
 };
 

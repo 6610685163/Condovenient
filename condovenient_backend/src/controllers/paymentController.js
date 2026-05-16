@@ -1,56 +1,24 @@
 const { db, admin } = require('../config/firebase');
 
-// --- จำลอง Bank API External Service ---
-// ในโปรเจกต์จริงให้เปลี่ยนเป็น URL ของธนาคารจริง เช่น SCB, KBank
-const BANK_API_URL = process.env.BANK_API_URL || 'https://mock-bank-api.example.com';
-const BANK_API_KEY = process.env.BANK_API_KEY || 'mock-api-key';
+const PAYMENT_MODE = process.env.PAYMENT_MODE || 'direct'; // 'direct' | 'bank_api'
+const BANK_API_URL = process.env.BANK_API_URL || '';
+const BANK_API_KEY = process.env.BANK_API_KEY || '';
 
-// --- Helper: เรียก Bank API เพื่อตรวจสอบสถานะการชำระเงิน ---
-async function verifyPaymentWithBank(paymentId) {
-    try {
-        // เรียก Bank API ด้วย fetch (Node 18+) หรือใช้ axios ถ้า install ไว้
-        const response = await fetch(`${BANK_API_URL}/verify/${paymentId}`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${BANK_API_KEY}`,
-                'Content-Type': 'application/json'
-            }
-        });
-
-        if (!response.ok) {
-            // ถ้า Bank API ตอบกลับ error ให้ throw เพื่อ catch ด้านนอก
-            throw new Error(`Bank API Error: ${response.status}`);
-        }
-
-        const data = await response.json();
-        // คาดว่า Bank API จะตอบกลับมาในรูปแบบ { status: 'success'|'pending'|'failed', amount, transactionRef }
-        return data;
-
-    } catch (error) {
-        console.error('Bank API verification failed:', error.message);
-        // ถ้าเรียก Bank API ไม่ได้ ให้ return สถานะ error กลับไป
-        return { status: 'verification_failed', error: error.message };
-    }
-}
-
-// --- 1. บันทึก Invoice / สร้างรายการชำระเงิน ---
 exports.createInvoice = async (req, res) => {
     try {
         const { userId, roomId, amount, description, dueDate } = req.body;
 
-        // สร้างข้อมูล Invoice ใหม่
         const invoiceData = {
-            userId: userId,
-            roomId: roomId,
+            userId,
+            roomId,
             amount: parseFloat(amount),
             description: description || 'ค่าส่วนกลาง',
             dueDate: dueDate || '',
-            status: 'pending',          // สถานะเริ่มต้น: รอชำระ
+            status: 'pending',
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
         };
 
-        // บันทึกลง collection 'invoices'
         const docRef = await db.collection('invoices').add(invoiceData);
 
         res.status(201).json({
@@ -58,24 +26,56 @@ exports.createInvoice = async (req, res) => {
             message: 'สร้าง Invoice เรียบร้อยแล้ว',
             invoiceId: docRef.id
         });
-
     } catch (error) {
         res.status(500).json({ success: false, error: 'เกิดข้อผิดพลาด: ' + error.message });
     }
 };
 
-// --- 2. ดึงรายการ Invoice ของ User ---
 exports.getInvoices = async (req, res) => {
     try {
         const { userId } = req.params;
+        let invoices = [];
 
-        const snapshot = await db.collection('invoices')
-            .where('userId', '==', userId)
-            .orderBy('createdAt', 'desc')
-            .get();
+        try {
+            const snapshot = await db.collection('invoices')
+                .where('userId', '==', userId)
+                .orderBy('createdAt', 'desc')
+                .get();
 
-        const invoices = [];
-        snapshot.forEach(doc => invoices.push({ id: doc.id, ...doc.data() }));
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                invoices.push({
+                    id: doc.id,
+                    ...data,
+                    createdAt: data.createdAt ? data.createdAt.toDate().toISOString() : null,
+                    updatedAt: data.updatedAt ? data.updatedAt.toDate().toISOString() : null,
+                    paidAt: data.paidAt ? data.paidAt.toDate().toISOString() : null,
+                });
+            });
+        } catch (indexErr) {
+            console.warn('Invoice composite index not ready, fallback:', indexErr.message);
+
+            const snapshot = await db.collection('invoices')
+                .where('userId', '==', userId)
+                .get();
+
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                invoices.push({
+                    id: doc.id,
+                    ...data,
+                    createdAt: data.createdAt ? data.createdAt.toDate().toISOString() : null,
+                    updatedAt: data.updatedAt ? data.updatedAt.toDate().toISOString() : null,
+                    paidAt: data.paidAt ? data.paidAt.toDate().toISOString() : null,
+                });
+            });
+
+            invoices.sort((a, b) => {
+                if (!a.createdAt) return 1;
+                if (!b.createdAt) return -1;
+                return new Date(b.createdAt) - new Date(a.createdAt);
+            });
+        }
 
         res.status(200).json({ success: true, invoices });
     } catch (error) {
@@ -83,57 +83,72 @@ exports.getInvoices = async (req, res) => {
     }
 };
 
-// --- 3. บันทึกการชำระเงิน (เดิม processPayment ยังคงอยู่) ---
 exports.processPayment = async (req, res) => {
     try {
-        const { roomId, amount, paymentMethod, slipUrl } = req.body;
+        const { roomId, userId, amount, paymentMethod, slipUrl } = req.body;
 
-        // 1. เตรียมข้อมูลการชำระเงิน
         const paymentData = {
-            roomId: roomId,
+            roomId: roomId || '',
+            userId: userId || '',
             amount: parseFloat(amount),
-            paymentMethod: paymentMethod, // เช่น 'transfer' หรือ 'credit_card'
-            slipUrl: slipUrl || '',        // ลิงก์รูปหลักฐานการโอน
-            status: 'pending',            // เริ่มต้นเป็น 'รอตรวจสอบ'
+            paymentMethod: paymentMethod || 'transfer',
+            slipUrl: slipUrl || '',
+            status: 'pending',
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         };
 
-        // 2. บันทึกลง Collection "commonFees"
         const docRef = await db.collection('commonFees').add(paymentData);
 
         res.status(201).json({
-            message: 'บันทึกการชำระเงินเรียบร้อยแล้ว รอเจ้าหน้าที่ตรวจสอบ',
+            message: 'บันทึกการชำระเงินเรียบร้อยแล้ว',
             paymentId: docRef.id
         });
-
     } catch (error) {
         res.status(500).json({ error: 'เกิดข้อผิดพลาด: ' + error.message });
     }
 };
 
-// --- 4. เรียก Bank API เพื่อตรวจสอบ Payment และอัปเดต Invoice ---
 exports.verifyBankPayment = async (req, res) => {
     try {
         const { paymentId } = req.params;
-        const { invoiceId } = req.body; // invoiceId ที่ต้องการอัปเดตหลัง verify สำเร็จ
+        const { invoiceId } = req.body;
 
-        // 1. เรียก Bank API ตรวจสอบสถานะ
-        const bankResult = await verifyPaymentWithBank(paymentId);
+        let bankStatus = 'success';
 
-        // 2. บันทึกผลการตรวจสอบจาก Bank ลง Firestore
-        const verificationLog = {
-            paymentId: paymentId,
+        if (PAYMENT_MODE === 'bank_api' && BANK_API_URL) {
+            try {
+                const response = await fetch(`${BANK_API_URL}/verify/${paymentId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${BANK_API_KEY}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                bankStatus = data.status || 'failed';
+            } catch (err) {
+                return res.status(502).json({
+                    success: false,
+                    message: 'ไม่สามารถติดต่อระบบธนาคารได้ กรุณาลองใหม่อีกครั้ง',
+                    error: err.message
+                });
+            }
+        }
+        // PAYMENT_MODE === 'direct' → ถือว่าชำระสำเร็จทันที
+
+        await db.collection('paymentVerifications').add({
+            paymentId,
             invoiceId: invoiceId || null,
-            bankStatus: bankResult.status,
-            bankResponse: JSON.stringify(bankResult),
+            bankStatus,
             verifiedAt: admin.firestore.FieldValue.serverTimestamp()
-        };
-        await db.collection('paymentVerifications').add(verificationLog);
+        });
 
-        // 3. ถ้า Bank ยืนยันว่าชำระสำเร็จ → อัปเดต Invoice และสร้าง Receipt
-        if (bankResult.status === 'success') {
+        if (bankStatus === 'success') {
+            await db.collection('commonFees').doc(paymentId).update({
+                status: 'paid',
+                paidAt: admin.firestore.FieldValue.serverTimestamp(),
+            }).catch(() => {});
 
-            // อัปเดตสถานะ Invoice เป็น 'paid'
             if (invoiceId) {
                 await db.collection('invoices').doc(invoiceId).update({
                     status: 'paid',
@@ -143,31 +158,26 @@ exports.verifyBankPayment = async (req, res) => {
                 });
             }
 
-            // สร้าง Receipt อัตโนมัติ
-            const receiptData = {
-                paymentId: paymentId,
+            const receiptRef = await db.collection('receipts').add({
+                paymentId,
                 invoiceId: invoiceId || null,
-                amount: bankResult.amount || 0,
-                transactionRef: bankResult.transactionRef || paymentId,
+                transactionRef: paymentId,
                 status: 'issued',
                 issuedAt: admin.firestore.FieldValue.serverTimestamp()
-            };
-            const receiptRef = await db.collection('receipts').add(receiptData);
+            });
 
             return res.status(200).json({
                 success: true,
-                message: 'ยืนยันการชำระเงินสำเร็จ ออก Receipt แล้ว',
-                bankStatus: bankResult.status,
+                message: 'ยืนยันการชำระเงินสำเร็จ',
+                bankStatus: 'success',
                 receiptId: receiptRef.id
             });
         }
 
-        // 4. ถ้าธนาคารยังรอหรือ failed
         res.status(200).json({
             success: false,
-            message: `สถานะจากธนาคาร: ${bankResult.status}`,
-            bankStatus: bankResult.status,
-            bankResponse: bankResult
+            message: `สถานะจากธนาคาร: ${bankStatus}`,
+            bankStatus
         });
 
     } catch (error) {
@@ -175,11 +185,9 @@ exports.verifyBankPayment = async (req, res) => {
     }
 };
 
-// --- 5. ดึง Receipt ของ Payment ---
 exports.getReceipt = async (req, res) => {
     try {
         const { receiptId } = req.params;
-
         const receiptDoc = await db.collection('receipts').doc(receiptId).get();
 
         if (!receiptDoc.exists) {
@@ -192,17 +200,24 @@ exports.getReceipt = async (req, res) => {
     }
 };
 
-// --- 6. ดึงประวัติการชำระเงิน (เดิม getPaymentHistory ยังคงอยู่) ---
 exports.getPaymentHistory = async (req, res) => {
     try {
         const { roomId } = req.params;
-        const snapshot = await db.collection('commonFees')
-            .where('roomId', '==', roomId)
-            .orderBy('createdAt', 'desc')
-            .get();
+        let history = [];
 
-        const history = [];
-        snapshot.forEach(doc => history.push({ id: doc.id, ...doc.data() }));
+        try {
+            const snapshot = await db.collection('commonFees')
+                .where('roomId', '==', roomId)
+                .orderBy('createdAt', 'desc')
+                .get();
+            snapshot.forEach(doc => history.push({ id: doc.id, ...doc.data() }));
+        } catch (indexErr) {
+            const snapshot = await db.collection('commonFees')
+                .where('roomId', '==', roomId)
+                .get();
+            snapshot.forEach(doc => history.push({ id: doc.id, ...doc.data() }));
+            history.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+        }
 
         res.status(200).json(history);
     } catch (error) {
