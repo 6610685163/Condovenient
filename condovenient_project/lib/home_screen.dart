@@ -9,6 +9,7 @@ import 'repair_screen.dart';
 import 'fees_screen.dart';
 import 'parcel_screen.dart';
 import 'visitor_screen.dart';
+import 'notification_screen.dart';
 // import 'notification_screen.dart'; // เปิดคอมเมนต์ถ้าคุณมีไฟล์หน้า Notification แล้ว
 
 class HomeScreen extends StatefulWidget {
@@ -345,8 +346,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   Row(
                     children: [
                       IconButton(
-                        onPressed:
-                            () {}, // ใส่ Navigator.push ไปหน้า Notification ตรงนี้
+                        onPressed: () {
+                          // ---------- แก้ไขตรงนี้ ----------
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const NotificationScreen(),
+                            ),
+                          );
+                          // -------------------------------
+                        },
                         icon: const Icon(
                           Icons.notifications_outlined,
                           color: Colors.amber,
