@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'login_screen.dart';
-import 'repair_screen.dart';
 import 'fees_screen.dart';
+import 'repair_screen.dart';
 import 'parcel_screen.dart';
+import 'visitor_screen.dart';
+import 'notification_screen.dart';
+import 'login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String userName;
@@ -23,70 +23,31 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
-  void _handleLogout() async {
-    bool? confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('ออกจากระบบ'),
-        content: const Text('คุณแน่ใจหรือไม่ว่าต้องการออกจากระบบ?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('ยกเลิก'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('ยืนยัน', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+  void _handleLogout() {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      (route) => false,
     );
-
-    if (confirm == true) {
-      try {
-        await FirebaseAuth.instance.signOut();
-        await GoogleSignIn().signOut();
-
-        if (mounted) {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => const LoginScreen()),
-            (route) => false,
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('เกิดข้อผิดพลาด: $e')));
-        }
-      }
-    }
   }
 
-  // --- 1. ฟังก์ชันเลือกหน้าจอที่จะแสดง ---
   Widget _getSelectedPage() {
     switch (_selectedIndex) {
       case 0:
-        return _buildHomeTab(); // หน้า Home เดิม
+        return _buildHomeTab();
       case 1:
-        return const FeesScreen(); // เรียกใช้หน้า FeesScreen
+        return const FeesScreen();
       case 2:
-        return const RepairScreen(); // เรียกใช้หน้าแจ้งซ่อมที่เราเพิ่งสร้าง
+        return const RepairScreen();
       case 3:
-        return const ParcelScreen(); // เรียกใช้หน้า ParcelScreen ที่เราสร้างไว้แล้ว
+        return const ParcelScreen();
       case 4:
-        return _buildPlaceholderTab(
-          'ข่าวสารและประกาศ',
-          Icons.article,
-          Colors.purple,
-        );
+        return const VisitorScreen();
       default:
         return _buildHomeTab();
     }
   }
 
-  // --- 2. ดึงหน้า Home เดิมมาใส่ฟังก์ชันนี้ ---
   Widget _buildHomeTab() {
     return SingleChildScrollView(
       child: Column(
@@ -104,76 +65,15 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- 3. สร้างหน้าเปล่าๆ ชั่วคราว (Placeholder) สำหรับแท็บอื่น ---
-  Widget _buildPlaceholderTab(String title, IconData icon, Color color) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 80, color: color.withOpacity(0.5)),
-          const SizedBox(height: 16),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'กำลังอยู่ในขั้นตอนการพัฒนา',
-            style: TextStyle(color: Colors.grey),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
-      // --- 4. เรียกใช้ฟังก์ชันเลือกหน้ามาใส่ตรง body ---
-      body: _getSelectedPage(),
-
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.blue[700],
-        unselectedItemColor: Colors.grey,
-        showUnselectedLabels: true,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_long),
-            label: 'Fees',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.build), label: 'Repair'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.inventory_2),
-            label: 'Parcel',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.article), label: 'News'),
-        ],
-      ),
-    );
-  }
-
-  // ==========================================
-  // ส่วน UI ด้านล่างนี้คือของเดิมที่คุณทำไว้ได้ดีอยู่แล้วครับ
-  // ==========================================
-
   Widget _buildHeaderSection() {
     return Stack(
       children: [
         Container(
           height: 280,
           padding: const EdgeInsets.only(top: 60, left: 24, right: 24),
-          decoration: BoxDecoration(
-            color: Colors.blue[600],
-            borderRadius: const BorderRadius.only(
+          decoration: const BoxDecoration(
+            color: Color(0xFF1E1E1E),
+            borderRadius: BorderRadius.only(
               bottomLeft: Radius.circular(30),
               bottomRight: Radius.circular(30),
             ),
@@ -186,12 +86,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   Row(
                     children: [
                       CircleAvatar(
-                        backgroundColor: Colors.white.withOpacity(0.2),
+                        backgroundColor: Colors.amber.withOpacity(0.2),
                         child: Text(
                           widget.userName.isNotEmpty
                               ? widget.userName[0].toUpperCase()
                               : '?',
-                          style: const TextStyle(color: Colors.white),
+                          style: const TextStyle(
+                            color: Colors.amber,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -200,10 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         children: [
                           const Text(
                             'Welcome back,',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                            ),
+                            style: TextStyle(color: Colors.grey, fontSize: 12),
                           ),
                           Text(
                             widget.userName,
@@ -220,15 +120,22 @@ class _HomeScreenState extends State<HomeScreen> {
                   Row(
                     children: [
                       IconButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const NotificationScreen(),
+                            ),
+                          );
+                        },
                         icon: const Icon(
                           Icons.notifications_outlined,
-                          color: Colors.white,
+                          color: Colors.amber,
                         ),
                       ),
                       IconButton(
                         onPressed: _handleLogout,
-                        icon: const Icon(Icons.logout, color: Colors.white),
+                        icon: const Icon(Icons.logout, color: Colors.grey),
                       ),
                     ],
                   ),
@@ -247,15 +154,9 @@ class _HomeScreenState extends State<HomeScreen> {
       margin: const EdgeInsets.only(top: 130, left: 24, right: 24),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF262626),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
+        border: Border.all(color: const Color(0xFF333333)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -270,22 +171,16 @@ class _HomeScreenState extends State<HomeScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.red[50],
+                  color: Colors.red.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Row(
-                  children: const [
-                    Icon(Icons.error_outline, size: 14, color: Colors.red),
-                    SizedBox(width: 4),
-                    Text(
-                      'Unpaid',
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+                child: const Text(
+                  'Unpaid',
+                  style: TextStyle(
+                    color: Colors.redAccent,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -296,7 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
             style: TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: Colors.amber,
             ),
           ),
           const SizedBox(height: 8),
@@ -308,14 +203,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: TextStyle(color: Colors.grey, fontSize: 12),
               ),
               TextButton(
-                onPressed: () {
-                  // สามารถสั่งให้เปลี่ยนแท็บจากปุ่มนี้ได้ด้วย
-                  setState(() => _selectedIndex = 1); // ไปแท็บ Fees
-                },
+                onPressed: () => setState(() => _selectedIndex = 1),
                 child: Row(
                   children: const [
-                    Text('View Details'),
-                    Icon(Icons.chevron_right, size: 16),
+                    Text('View Details', style: TextStyle(color: Colors.amber)),
+                    Icon(Icons.chevron_right, size: 16, color: Colors.amber),
                   ],
                 ),
               ),
@@ -334,30 +226,34 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           const Text(
             'Quick Actions',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildActionButton(Icons.payment, 'Pay Fee', Colors.blue, 1),
+              _buildActionButton(Icons.payment, 'Pay Fee', Colors.amber, 1),
               _buildActionButton(
                 Icons.build_rounded,
                 'Repair',
-                Colors.orange,
+                Colors.amber,
                 2,
               ),
               _buildActionButton(
                 Icons.inventory_2_rounded,
                 'Parcel',
-                Colors.green,
+                Colors.amber,
                 3,
               ),
               _buildActionButton(
                 Icons.person_add_rounded,
                 'Visitor',
-                Colors.teal,
-                0,
+                Colors.amber,
+                4,
               ),
             ],
           ),
@@ -366,7 +262,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ปรับให้ปุ่ม Quick Action รับค่า index ปลายทาง เพื่อกดแล้วลิงก์ไปแท็บอื่นได้เลย
   Widget _buildActionButton(
     IconData icon,
     String label,
@@ -374,9 +269,7 @@ class _HomeScreenState extends State<HomeScreen> {
     int targetIndex,
   ) {
     return GestureDetector(
-      onTap: () {
-        setState(() => _selectedIndex = targetIndex);
-      },
+      onTap: () => setState(() => _selectedIndex = targetIndex),
       child: Column(
         children: [
           Container(
@@ -385,13 +278,18 @@ class _HomeScreenState extends State<HomeScreen> {
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: color.withOpacity(0.3)),
             ),
             child: Icon(icon, color: color, size: 28),
           ),
           const SizedBox(height: 8),
           Text(
             label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: Colors.white70,
+            ),
           ),
         ],
       ),
@@ -404,31 +302,35 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: const Color(0xFF1E1E1E),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: const Color(0xFF2A2A2A)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
+              children: const [
+                Text(
                   'Your Unit',
                   style: TextStyle(color: Colors.grey, fontSize: 12),
                 ),
-                const SizedBox(height: 4),
-                const Text(
+                SizedBox(height: 4),
+                Text(
                   'Building A, Unit 1234',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ],
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.grey[100],
+                color: Colors.amber.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
@@ -436,7 +338,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black54,
+                  color: Colors.amber,
                 ),
               ),
             ),
@@ -446,7 +348,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- ส่วนใหม่: ตารางกำหนดการสำคัญ (Important Schedule) ---
   Widget _buildImportantSchedule() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -458,40 +359,41 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               const Text(
                 'กำหนดการสำคัญ',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
-              TextButton(onPressed: () {}, child: const Text('ดูปฏิทิน')),
+              TextButton(
+                onPressed: () {},
+                child: const Text(
+                  'ดูปฏิทิน',
+                  style: TextStyle(color: Colors.amber),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
-          // รายการกำหนดการ
           _buildScheduleItem(
             'งดจ่ายกระแสไฟฟ้าชั่วคราว',
             '10 เม.ย. 2026 | 09:00 - 12:00',
             'อาคาร A และ พื้นที่ส่วนกลาง',
             Icons.flash_off_rounded,
-            Colors.orange,
+            Colors.amber,
           ),
           _buildScheduleItem(
             'ฉีดพ่นยากำจัดแมลง',
             '12 เม.ย. 2026 | 13:00 เป็นต้นไป',
             'ทุกยูนิต และสวนหย่อม',
             Icons.bug_report_outlined,
-            Colors.green,
-          ),
-          _buildScheduleItem(
-            'ตรวจสอบระบบดับเพลิงประจำปี',
-            '15 เม.ย. 2026 | 10:00 - 15:00',
-            'ทุกพื้นที่ภายในโครงการ',
-            Icons.fire_extinguisher_rounded,
-            Colors.red,
+            Colors.amber,
           ),
         ],
       ),
     );
   }
 
-  // Widget ย่อยสำหรับแต่ละรายการในตารางเวลา
   Widget _buildScheduleItem(
     String title,
     String time,
@@ -502,21 +404,13 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF1E1E1E),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade100),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: const Color(0xFF2A2A2A)),
       ),
       child: IntrinsicHeight(
         child: Row(
           children: [
-            // แถบสีด้านซ้ายบอกความสำคัญ
             Container(
               width: 6,
               decoration: BoxDecoration(
@@ -528,7 +422,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(width: 16),
-            // ไอคอนและรายละเอียด
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -548,46 +441,23 @@ class _HomeScreenState extends State<HomeScreen> {
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
+                              color: Colors.white,
                             ),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.access_time,
-                          size: 14,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          time,
-                          style: const TextStyle(
-                            color: Colors.black87,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      time,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.location_on_outlined,
-                          size: 14,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          location,
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      location,
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
                     ),
                   ],
                 ),
@@ -601,40 +471,33 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildNotificationItem(String title, String time, Color dotColor) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.blue[50]!.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF121212),
+      body: _getSelectedPage(),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: (index) => setState(() => _selectedIndex = index),
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: const Color(0xFF1E1E1E),
+        selectedItemColor: Colors.amber,
+        unselectedItemColor: Colors.grey,
+        showUnselectedLabels: true,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.receipt_long),
+            label: 'Fees',
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  time,
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-              ],
-            ),
+          BottomNavigationBarItem(icon: Icon(Icons.build), label: 'Repair'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.inventory_2),
+            label: 'Parcel',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_add_rounded),
+            label: 'Visitor',
           ),
         ],
       ),

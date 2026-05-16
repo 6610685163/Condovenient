@@ -8,42 +8,52 @@ class ParcelScreen extends StatefulWidget {
 }
 
 class _ParcelScreenState extends State<ParcelScreen> {
-  // จำลองสถานะตู้ Locker (0 = ว่าง, 1 = มีพัสดุของ User, 2 = เต็ม/พัสดุคนอื่น)
   final List<int> _lockerStatus = [1, 0, 2, 0, 0, 1, 2, 0, 0, 2, 0, 0];
 
   void _showPickupQRCode(int lockerNumber) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Center(child: Text('Scan to Open Locker #$lockerNumber')),
+        backgroundColor: const Color(0xFF1E1E1E),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFF2A2A2A)),
+        ),
+        title: Center(
+          child: Text(
+            'Locker #$lockerNumber QR',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'กรุณานำ QR Code นี้ไปสแกนที่ตู้ Locker',
+              'สแกน QR Code นี้ที่ตู้เพื่อเปิดรับพัสดุ',
               style: TextStyle(color: Colors.grey, fontSize: 14),
             ),
             const SizedBox(height: 20),
-            // จำลอง QR Code
             Container(
               width: 200,
               height: 200,
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.black, width: 2),
-                image: const DecorationImage(
-                  image: NetworkImage(
-                    'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=Locker1234',
-                  ),
-                  fit: BoxFit.cover,
-                ),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Image.network(
+                'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=Locker1234',
+                fit: BoxFit.cover,
               ),
             ),
             const SizedBox(height: 20),
-            Text(
+            const Text(
               'Exp: 10:00 mins',
               style: TextStyle(
-                color: Colors.red[400],
+                color: Colors.redAccent,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -52,7 +62,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+            child: const Text('ปิด', style: TextStyle(color: Colors.amber)),
           ),
         ],
       ),
@@ -62,7 +72,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
         title: const Text(
           'Parcel & Locker',
@@ -70,18 +80,21 @@ class _ParcelScreenState extends State<ParcelScreen> {
         ),
         centerTitle: true,
         elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        backgroundColor: const Color(0xFF1E1E1E),
+        foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- ส่วนสถานะ Locker ---
             const Text(
               'Smart Locker Status',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
             const SizedBox(height: 16),
             GridView.builder(
@@ -94,17 +107,20 @@ class _ParcelScreenState extends State<ParcelScreen> {
               ),
               itemCount: _lockerStatus.length,
               itemBuilder: (context, index) {
-                Color bgColor = Colors.white;
+                Color bgColor = const Color(0xFF1E1E1E);
                 IconData? icon;
                 Color iconColor = Colors.grey;
+                BoxBorder? border = Border.all(color: const Color(0xFF2A2A2A));
 
                 if (_lockerStatus[index] == 1) {
-                  bgColor = Colors.blue[50]!;
-                  icon = Icons.inventory_2;
-                  iconColor = Colors.blue;
+                  bgColor = Colors.amber.withOpacity(0.15);
+                  icon = Icons.inventory_2_rounded;
+                  iconColor = Colors.amber;
+                  border = Border.all(color: Colors.amber, width: 1.5);
                 } else if (_lockerStatus[index] == 2) {
-                  bgColor = Colors.grey[200]!;
-                  icon = Icons.lock_outline;
+                  bgColor = const Color(0xFF2A2A2A);
+                  icon = Icons.lock_outline_rounded;
+                  iconColor = Colors.grey[600]!;
                 }
 
                 return GestureDetector(
@@ -115,11 +131,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
                     decoration: BoxDecoration(
                       color: bgColor,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: _lockerStatus[index] == 1
-                            ? Colors.blue
-                            : Colors.transparent,
-                      ),
+                      border: border,
                     ),
                     child: Center(
                       child: icon != null
@@ -135,10 +147,13 @@ class _ParcelScreenState extends State<ParcelScreen> {
             ),
             const SizedBox(height: 32),
 
-            // --- ส่วนรายการพัสดุที่รอรับ ---
             const Text(
               'พัสดุรอรับ (Active Parcels)',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
             const SizedBox(height: 16),
             _buildParcelItem('Kerry Express', 'Locker #1', 'Arrived: 09:30 AM'),
@@ -154,14 +169,18 @@ class _ParcelScreenState extends State<ParcelScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF1E1E1E),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF2A2A2A)),
       ),
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: Colors.blue[100],
-            child: const Icon(Icons.local_shipping, color: Colors.blue),
+            backgroundColor: Colors.amber.withOpacity(0.1),
+            child: const Icon(
+              Icons.local_shipping_rounded,
+              color: Colors.amber,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -170,11 +189,18 @@ class _ParcelScreenState extends State<ParcelScreen> {
               children: [
                 Text(
                   carrier,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
                 Text(
                   location,
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  style: const TextStyle(
+                    color: Colors.amber,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -183,14 +209,15 @@ class _ParcelScreenState extends State<ParcelScreen> {
             onPressed: () =>
                 _showPickupQRCode(int.parse(location.split('#')[1])),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
+              backgroundColor: Colors.amber,
+              foregroundColor: Colors.black,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
             child: const Text(
               'Get QR',
-              style: TextStyle(color: Colors.white, fontSize: 12),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
             ),
           ),
         ],

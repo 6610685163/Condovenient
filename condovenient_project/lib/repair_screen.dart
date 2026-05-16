@@ -9,13 +9,9 @@ class RepairScreen extends StatefulWidget {
 
 class _RepairScreenState extends State<RepairScreen> {
   final _formKey = GlobalKey<FormState>();
-
-  // ตัวแปรเก็บค่าฟอร์ม
   String? _selectedCategory;
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
-
-  // จำลองว่าเลือกรูปภาพแล้วหรือยัง (เพื่อเปลี่ยน UI)
   bool _hasImage = false;
   bool _isSubmitting = false;
 
@@ -38,32 +34,34 @@ class _RepairScreenState extends State<RepairScreen> {
   void _submitRepair() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isSubmitting = true);
-
-      // จำลองการส่งข้อมูลไป Backend 2 วินาที
-      await Future.delayed(const Duration(seconds: 2));
+      await Future.delayed(const Duration(milliseconds: 1500));
 
       if (mounted) {
         setState(() => _isSubmitting = false);
-
-        // โชว์ Pop-up สำเร็จ
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
+            backgroundColor: const Color(0xFF1E1E1E),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
+              side: const BorderSide(color: Color(0xFF2A2A2A)),
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.check_circle, color: Colors.green, size: 64),
+                const Icon(Icons.check_circle, color: Colors.amber, size: 64),
                 const SizedBox(height: 16),
                 const Text(
                   'ส่งเรื่องแจ้งซ่อมสำเร็จ',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'ช่างจะติดต่อกลับไปภายใน 24 ชั่วโมง',
+                  'ช่างจะติดต่อกลับภายใน 24 ชั่วโมง',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.grey),
                 ),
@@ -72,8 +70,7 @@ class _RepairScreenState extends State<RepairScreen> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.pop(context); // ปิด Pop-up
-                      // ล้างฟอร์ม
+                      Navigator.pop(context);
                       _titleController.clear();
                       _descController.clear();
                       setState(() {
@@ -82,14 +79,15 @@ class _RepairScreenState extends State<RepairScreen> {
                       });
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue[700],
+                      backgroundColor: Colors.amber,
+                      foregroundColor: Colors.black,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
                     child: const Text(
                       'ตกลง',
-                      style: TextStyle(color: Colors.white),
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
@@ -101,17 +99,35 @@ class _RepairScreenState extends State<RepairScreen> {
     }
   }
 
+  InputDecoration _buildInputDecoration(String hint, IconData icon) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: Colors.grey),
+      prefixIcon: Icon(icon, color: Colors.amber),
+      filled: true,
+      fillColor: const Color(0xFF1E1E1E),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFF2A2A2A)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.amber, width: 1.5),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
         title: const Text(
           'แจ้งซ่อม (Report Repair)',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        backgroundColor: const Color(0xFF1E1E1E),
+        foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
       ),
@@ -122,27 +138,23 @@ class _RepairScreenState extends State<RepairScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- 1. หมวดหมู่ ---
               const Text(
                 'หมวดหมู่ปัญหา',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: Colors.white,
+                ),
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 value: _selectedCategory,
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
-                  ),
+                dropdownColor: const Color(0xFF1E1E1E),
+                style: const TextStyle(color: Colors.white),
+                decoration: _buildInputDecoration(
+                  'เลือกหมวดหมู่ที่ต้องการแจ้งซ่อม',
+                  Icons.category_outlined,
                 ),
-                hint: const Text('เลือกหมวดหมู่ที่ต้องการแจ้งซ่อม'),
                 items: _categories.map((category) {
                   return DropdownMenuItem(
                     value: category,
@@ -155,71 +167,81 @@ class _RepairScreenState extends State<RepairScreen> {
               ),
               const SizedBox(height: 20),
 
-              // --- 2. หัวข้อ ---
               const Text(
                 'หัวข้อ',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: Colors.white,
+                ),
               ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _titleController,
-                decoration: InputDecoration(
-                  hintText: 'เช่น แอร์น้ำหยด, หลอดไฟห้องน้ำขาด',
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
+                style: const TextStyle(color: Colors.white),
+                decoration: _buildInputDecoration(
+                  'เช่น แอร์น้ำหยด, หลอดไฟห้องน้ำขาด',
+                  Icons.build_outlined,
                 ),
                 validator: (value) => value!.isEmpty ? 'กรุณาระบุหัวข้อ' : null,
               ),
               const SizedBox(height: 20),
 
-              // --- 3. รายละเอียด ---
               const Text(
                 'รายละเอียดเพิ่มเติม',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: Colors.white,
+                ),
               ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _descController,
                 maxLines: 4,
+                style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   hintText:
                       'อธิบายลักษณะอาการ หรือช่วงเวลาที่สะดวกให้ช่างเข้าประเมิน',
+                  hintStyle: const TextStyle(color: Colors.grey),
                   filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
+                  fillColor: const Color(0xFF1E1E1E),
+                  enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+                    borderSide: const BorderSide(color: Color(0xFF2A2A2A)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: Colors.amber,
+                      width: 1.5,
+                    ),
                   ),
                 ),
               ),
               const SizedBox(height: 24),
 
-              // --- 4. อัปโหลดรูปภาพ (UI จำลอง) ---
               const Text(
                 'รูปภาพประกอบ',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: Colors.white,
+                ),
               ),
               const SizedBox(height: 8),
               GestureDetector(
-                onTap: () {
-                  // สลับสถานะเพื่อโชว์ UI รูปภาพจำลอง
-                  setState(() => _hasImage = !_hasImage);
-                },
+                onTap: () => setState(() => _hasImage = !_hasImage),
                 child: Container(
                   height: 150,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: const Color(0xFF1E1E1E),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: _hasImage ? Colors.blue : Colors.grey.shade300,
-                      width: 2,
+                      color: _hasImage ? Colors.amber : const Color(0xFF2A2A2A),
+                      width: 1.5,
                     ),
-                    // ถ้ารูปมีให้โชว์รูปจำลอง (ดึงจากเน็ต)
                     image: _hasImage
                         ? const DecorationImage(
                             image: NetworkImage(
@@ -236,13 +258,13 @@ class _RepairScreenState extends State<RepairScreen> {
                             Icon(
                               Icons.add_a_photo_outlined,
                               size: 40,
-                              color: Colors.blue[400],
+                              color: Colors.amber.withOpacity(0.6),
                             ),
                             const SizedBox(height: 8),
-                            Text(
+                            const Text(
                               'แตะเพื่อถ่ายรูปหรืออัปโหลด',
                               style: TextStyle(
-                                color: Colors.grey[600],
+                                color: Colors.grey,
                                 fontSize: 14,
                               ),
                             ),
@@ -250,7 +272,7 @@ class _RepairScreenState extends State<RepairScreen> {
                         )
                       : Container(
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.4),
+                            color: Colors.black.withOpacity(0.5),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: const Center(
@@ -265,26 +287,25 @@ class _RepairScreenState extends State<RepairScreen> {
               ),
               const SizedBox(height: 32),
 
-              // --- 5. ปุ่ม Submit ---
               SizedBox(
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
                   onPressed: _isSubmitting ? null : _submitRepair,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[700],
+                    backgroundColor: Colors.amber,
+                    foregroundColor: Colors.black,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
                   child: _isSubmitting
-                      ? const CircularProgressIndicator(color: Colors.white)
+                      ? const CircularProgressIndicator(color: Colors.black)
                       : const Text(
                           'ส่งเรื่องแจ้งซ่อม',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
                           ),
                         ),
                 ),

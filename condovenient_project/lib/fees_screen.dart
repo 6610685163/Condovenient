@@ -8,7 +8,6 @@ class FeesScreen extends StatefulWidget {
 }
 
 class _FeesScreenState extends State<FeesScreen> {
-  // ฟังก์ชันจำลองการกดจ่ายเงิน (เด้ง Bottom Sheet ขึ้นมา)
   void _showPaymentGateway() {
     showModalBottomSheet(
       context: context,
@@ -21,14 +20,14 @@ class _FeesScreenState extends State<FeesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
         title: const Text(
           'ชำระค่าส่วนกลาง',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        backgroundColor: const Color(0xFF1E1E1E),
+        foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
       ),
@@ -37,19 +36,18 @@ class _FeesScreenState extends State<FeesScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- 1. การ์ดยอดค้างชำระ (Outstanding Balance) ---
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [Colors.blue[700]!, Colors.blue[500]!],
+                  colors: [Colors.amber[600]!, Colors.amber[400]!],
                 ),
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.blue.withOpacity(0.3),
+                    color: Colors.amber.withOpacity(0.2),
                     blurRadius: 15,
                     offset: const Offset(0, 8),
                   ),
@@ -63,7 +61,11 @@ class _FeesScreenState extends State<FeesScreen> {
                     children: [
                       const Text(
                         'ยอดค้างชำระรวม',
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                        style: TextStyle(
+                          color: Colors.black87,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -71,13 +73,13 @@ class _FeesScreenState extends State<FeesScreen> {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.redAccent,
+                          color: Colors.black,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Text(
                           'Unpaid',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: Colors.amber,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
@@ -89,7 +91,7 @@ class _FeesScreenState extends State<FeesScreen> {
                   const Text(
                     '฿ 5,250.00',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Colors.black,
                       fontSize: 36,
                       fontWeight: FontWeight.bold,
                     ),
@@ -104,17 +106,18 @@ class _FeesScreenState extends State<FeesScreen> {
                           Text(
                             'ครบกำหนดชำระ',
                             style: TextStyle(
-                              color: Colors.white70,
+                              color: Colors.black54,
                               fontSize: 12,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                           SizedBox(height: 4),
                           Text(
                             '15 ก.พ. 2026',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: Colors.black,
                               fontSize: 14,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
@@ -122,8 +125,8 @@ class _FeesScreenState extends State<FeesScreen> {
                       ElevatedButton(
                         onPressed: _showPaymentGateway,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.blue[700],
+                          backgroundColor: Colors.black,
+                          foregroundColor: Colors.amber,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -144,10 +147,13 @@ class _FeesScreenState extends State<FeesScreen> {
             ),
             const SizedBox(height: 32),
 
-            // --- 2. ประวัติการชำระเงิน (Invoice History) ---
             const Text(
               'ประวัติการชำระเงิน',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
             const SizedBox(height: 16),
             _buildInvoiceItem(
@@ -184,19 +190,19 @@ class _FeesScreenState extends State<FeesScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF1E1E1E),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: const Color(0xFF2A2A2A)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.green[50],
+              color: Colors.amber.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.receipt_long, color: Colors.green[600]),
+            child: const Icon(Icons.receipt_long, color: Colors.amber),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -208,6 +214,7 @@ class _FeesScreenState extends State<FeesScreen> {
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
+                    color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -226,13 +233,14 @@ class _FeesScreenState extends State<FeesScreen> {
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
+                  color: Colors.white,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 isPaid ? 'Paid' : 'Unpaid',
-                style: TextStyle(
-                  color: isPaid ? Colors.green : Colors.red,
+                style: const TextStyle(
+                  color: Colors.greenAccent,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                 ),
@@ -245,9 +253,6 @@ class _FeesScreenState extends State<FeesScreen> {
   }
 }
 
-// ============================================================================
-// --- Widget สำหรับแสดงหน้าต่างจำลอง Payment Gateway ด้านล่าง ---
-// ============================================================================
 class PaymentGatewaySheet extends StatefulWidget {
   const PaymentGatewaySheet({super.key});
 
@@ -256,37 +261,41 @@ class PaymentGatewaySheet extends StatefulWidget {
 }
 
 class _PaymentGatewaySheetState extends State<PaymentGatewaySheet> {
-  int _selectedMethod = 0; // 0 = QR, 1 = Credit Card
+  int _selectedMethod = 0;
   bool _isProcessing = false;
 
   void _processPayment() async {
     setState(() => _isProcessing = true);
-    // จำลองการเชื่อมต่อธนาคาร 3 วินาที
-    await Future.delayed(const Duration(seconds: 3));
+    await Future.delayed(const Duration(seconds: 2));
 
     if (mounted) {
       setState(() => _isProcessing = false);
-      Navigator.pop(context); // ปิดหน้าต่าง Payment
+      Navigator.pop(context);
 
-      // โชว์ Pop-up จ่ายเงินสำเร็จ
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF1E1E1E),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
+            side: const BorderSide(color: Color(0xFF2A2A2A)),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.check_circle, color: Colors.green, size: 64),
+              const Icon(Icons.check_circle, color: Colors.amber, size: 64),
               const SizedBox(height: 16),
               const Text(
                 'ชำระเงินสำเร็จ',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
               const SizedBox(height: 8),
               const Text(
-                'ระบบได้รับยอดเงิน ฿ 5,250.00 แล้ว\nใบเสร็จถูกส่งไปยังอีเมลของคุณ',
+                'ระบบได้รับยอดเงินเรียบร้อยแล้ว',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.grey),
               ),
@@ -296,14 +305,15 @@ class _PaymentGatewaySheetState extends State<PaymentGatewaySheet> {
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[700],
+                    backgroundColor: Colors.amber,
+                    foregroundColor: Colors.black,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
                   child: const Text(
                     'กลับสู่หน้าหลัก',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -319,7 +329,7 @@ class _PaymentGatewaySheetState extends State<PaymentGatewaySheet> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFF1E1E1E),
         borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
       child: Column(
@@ -331,7 +341,7 @@ class _PaymentGatewaySheetState extends State<PaymentGatewaySheet> {
               width: 40,
               height: 5,
               decoration: BoxDecoration(
-                color: Colors.grey[300],
+                color: Colors.grey[800],
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
@@ -339,11 +349,14 @@ class _PaymentGatewaySheetState extends State<PaymentGatewaySheet> {
           const SizedBox(height: 24),
           const Text(
             'เลือกช่องทางการชำระเงิน',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
           const SizedBox(height: 20),
 
-          // ปุ่มเลือก QR Code
           GestureDetector(
             onTap: () => setState(() => _selectedMethod = 0),
             child: Container(
@@ -351,19 +364,21 @@ class _PaymentGatewaySheetState extends State<PaymentGatewaySheet> {
               decoration: BoxDecoration(
                 border: Border.all(
                   color: _selectedMethod == 0
-                      ? Colors.blue
-                      : Colors.grey.shade300,
+                      ? Colors.amber
+                      : const Color(0xFF2A2A2A),
                   width: 2,
                 ),
                 borderRadius: BorderRadius.circular(16),
-                color: _selectedMethod == 0 ? Colors.blue[50] : Colors.white,
+                color: _selectedMethod == 0
+                    ? Colors.amber.withOpacity(0.05)
+                    : const Color(0xFF121212),
               ),
               child: Row(
                 children: [
                   const Icon(
                     Icons.qr_code_scanner,
                     size: 32,
-                    color: Colors.blue,
+                    color: Colors.amber,
                   ),
                   const SizedBox(width: 16),
                   const Expanded(
@@ -372,18 +387,18 @@ class _PaymentGatewaySheetState extends State<PaymentGatewaySheet> {
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
+                        color: Colors.white,
                       ),
                     ),
                   ),
                   if (_selectedMethod == 0)
-                    const Icon(Icons.check_circle, color: Colors.blue),
+                    const Icon(Icons.check_circle, color: Colors.amber),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 12),
 
-          // ปุ่มเลือก Credit Card
           GestureDetector(
             onTap: () => setState(() => _selectedMethod = 1),
             child: Container(
@@ -391,16 +406,18 @@ class _PaymentGatewaySheetState extends State<PaymentGatewaySheet> {
               decoration: BoxDecoration(
                 border: Border.all(
                   color: _selectedMethod == 1
-                      ? Colors.blue
-                      : Colors.grey.shade300,
+                      ? Colors.amber
+                      : const Color(0xFF2A2A2A),
                   width: 2,
                 ),
                 borderRadius: BorderRadius.circular(16),
-                color: _selectedMethod == 1 ? Colors.blue[50] : Colors.white,
+                color: _selectedMethod == 1
+                    ? Colors.amber.withOpacity(0.05)
+                    : const Color(0xFF121212),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.credit_card, size: 32, color: Colors.orange),
+                  const Icon(Icons.credit_card, size: 32, color: Colors.amber),
                   const SizedBox(width: 16),
                   const Expanded(
                     child: Text(
@@ -408,18 +425,18 @@ class _PaymentGatewaySheetState extends State<PaymentGatewaySheet> {
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
+                        color: Colors.white,
                       ),
                     ),
                   ),
                   if (_selectedMethod == 1)
-                    const Icon(Icons.check_circle, color: Colors.blue),
+                    const Icon(Icons.check_circle, color: Colors.amber),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 32),
 
-          // ยอดรวม และปุ่มยืนยัน
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -432,7 +449,11 @@ class _PaymentGatewaySheetState extends State<PaymentGatewaySheet> {
                   ),
                   Text(
                     '฿ 5,250.00',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.amber,
+                    ),
                   ),
                 ],
               ),
@@ -442,25 +463,23 @@ class _PaymentGatewaySheetState extends State<PaymentGatewaySheet> {
                 child: ElevatedButton(
                   onPressed: _isProcessing ? null : _processPayment,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[700],
+                    backgroundColor: Colors.amber,
+                    foregroundColor: Colors.black,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
                   child: _isProcessing
-                      ? const CircularProgressIndicator(color: Colors.white)
+                      ? const CircularProgressIndicator(color: Colors.black)
                       : const Text(
                           'ยืนยันชำระเงิน',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20), // เผื่อขอบจอด้านล่าง (Safe Area)
+          const SizedBox(height: 20),
         ],
       ),
     );

@@ -1,15 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart'; // 1. ต้อง import ตัวนี้
 import 'login_screen.dart';
 
 void main() async {
-  // 2. ต้องเปลี่ยนเป็น async
-  // 3. ต้องเพิ่มบรรทัดนี้เพื่อให้แน่ใจว่า Flutter พร้อมทำงานก่อนเรียก Firebase
   WidgetsFlutterBinding.ensureInitialized();
-
-  // 4. เริ่มต้นทำงาน Firebase
-  await Firebase.initializeApp();
-
   runApp(const MyApp());
 }
 
@@ -21,7 +14,17 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Condovenient',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.blueGrey, useMaterial3: true),
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        primaryColor: Colors.amber,
+        scaffoldBackgroundColor: const Color(0xFF121212),
+        colorScheme: const ColorScheme.dark(
+          primary: Colors.amber,
+          secondary: Colors.amberAccent,
+          surface: Color(0xFF1E1E1E),
+        ),
+        useMaterial3: true,
+      ),
       home: const LoginScreen(),
     );
   }
