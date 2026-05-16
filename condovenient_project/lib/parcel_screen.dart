@@ -13,7 +13,6 @@ class ParcelScreen extends StatefulWidget {
 
 class _ParcelScreenState extends State<ParcelScreen> {
   final String _backendUrl = 'http://10.0.2.2:3000';
-
   List<int> _lockerStatus = List.filled(12, 0);
   List<Map<String, dynamic>> _activeParcels = [];
   List<Map<String, dynamic>> _historyParcels = [];
@@ -25,7 +24,10 @@ class _ParcelScreenState extends State<ParcelScreen> {
   void initState() {
     super.initState();
     _loadAll();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) => _loadAll());
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _loadAll(),
+    );
   }
 
   @override
@@ -35,25 +37,19 @@ class _ParcelScreenState extends State<ParcelScreen> {
   }
 
   Future<void> _loadAll() async {
-    // ตั้ง isLoading = true ก่อน แล้ว set false เมื่อทั้งคู่เสร็จ
     if (mounted) setState(() => _isLoading = true);
     try {
-      await Future.wait([
-        _loadLockerStatus(),
-        _loadUserParcels(),
-      ]);
+      await Future.wait([_loadLockerStatus(), _loadUserParcels()]);
     } finally {
-      // ไม่ว่าจะสำเร็จหรือ error ก็ต้องหยุด loading
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _loadLockerStatus() async {
     try {
-      final response = await http.get(
-        Uri.parse('$_backendUrl/api/parcel/status'),
-      ).timeout(const Duration(seconds: 10));
-
+      final response = await http
+          .get(Uri.parse('$_backendUrl/api/parcel/status'))
+          .timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true && mounted) {
@@ -66,52 +62,59 @@ class _ParcelScreenState extends State<ParcelScreen> {
       }
     } catch (e) {
       debugPrint('loadLockerStatus error: $e');
-      // ไม่ throw เพราะ Future.wait จะ cancel อีกตัว
     }
   }
 
   Future<void> _loadUserParcels() async {
     if (widget.userId.isEmpty) return;
     try {
-      final response = await http.get(
-        Uri.parse('$_backendUrl/api/parcel/user/${widget.userId}'),
-      ).timeout(const Duration(seconds: 10));
-
+      final response = await http
+          .get(Uri.parse('$_backendUrl/api/parcel/user/${widget.userId}'))
+          .timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true && mounted) {
           final all = List<Map<String, dynamic>>.from(data['parcels'] ?? []);
           setState(() {
-            _activeParcels = all.where((p) => p['status'] == 'arrived').toList();
-            _historyParcels = all.where((p) => p['status'] == 'picked_up').toList();
+            _activeParcels = all
+                .where((p) => p['status'] == 'arrived')
+                .toList();
+            _historyParcels = all
+                .where((p) => p['status'] == 'picked_up')
+                .toList();
             _errorMessage = null;
           });
         }
       } else {
-        if (mounted) setState(() => _errorMessage = 'ไม่สามารถโหลดข้อมูลพัสดุได้');
+        if (mounted)
+          setState(() => _errorMessage = 'ไม่สามารถโหลดข้อมูลพัสดุได้');
       }
     } catch (e) {
-      debugPrint('loadUserParcels error: $e');
-      if (mounted) setState(() => _errorMessage = 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+      if (mounted)
+        setState(() => _errorMessage = 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
     }
   }
 
-  void _showPickupQRCode(String parcelId, String carrier, String lockerNumber) async {
+  void _showPickupQRCode(
+    String parcelId,
+    String carrier,
+    String lockerNumber,
+  ) async {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
+      builder: (_) =>
+          const Center(child: CircularProgressIndicator(color: Colors.amber)),
     );
-
     try {
-      final response = await http.post(
-        Uri.parse('$_backendUrl/api/parcel/generate-qr'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'userId': widget.userId, 'parcelId': parcelId}),
-      ).timeout(const Duration(seconds: 10));
-
+      final response = await http
+          .post(
+            Uri.parse('$_backendUrl/api/parcel/generate-qr'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'userId': widget.userId, 'parcelId': parcelId}),
+          )
+          .timeout(const Duration(seconds: 10));
       if (mounted) Navigator.pop(context);
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true && mounted) {
@@ -119,8 +122,8 @@ class _ParcelScreenState extends State<ParcelScreen> {
           _showQRDialog(parcelId, carrier, lockerNumber, qrData);
         }
       } else {
-        final data = jsonDecode(response.body);
-        if (mounted) _showSnack(data['message'] ?? 'เกิดข้อผิดพลาด');
+        if (mounted)
+          _showSnack(jsonDecode(response.body)['message'] ?? 'เกิดข้อผิดพลาด');
       }
     } catch (e) {
       if (mounted) {
@@ -130,50 +133,70 @@ class _ParcelScreenState extends State<ParcelScreen> {
     }
   }
 
-  void _showQRDialog(String parcelId, String carrier, String lockerNumber, String qrData) {
+  void _showQRDialog(
+    String parcelId,
+    String carrier,
+    String lockerNumber,
+    String qrData,
+  ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Center(child: Text('Scan to Open Locker #$lockerNumber')),
+        backgroundColor: const Color(0xFF1E1E1E),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFF2A2A2A)),
+        ),
+        title: Center(
+          child: Text(
+            'Scan to Open Locker #$lockerNumber',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               'พัสดุจาก: $carrier',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.amber,
+              ),
             ),
             const SizedBox(height: 4),
             const Text(
-              'กรุณานำ QR Code ไปสแกนที่ตู้ Locker',
+              'สแกน QR Code นี้ที่ตู้เพื่อเปิดรับพัสดุ',
               style: TextStyle(color: Colors.grey, fontSize: 13),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
             Container(
-              width: 200, height: 200,
+              width: 200,
+              height: 200,
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.black, width: 2),
-                borderRadius: BorderRadius.circular(8),
-                image: DecorationImage(
-                  image: NetworkImage(
-                    'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=$qrData',
-                  ),
-                  fit: BoxFit.cover,
-                ),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Image.network(
+                'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=$qrData',
+                fit: BoxFit.cover,
               ),
             ),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.red[50],
+                color: Colors.red.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(
+              child: const Text(
                 '⏱ หมดอายุใน 10 นาที',
                 style: TextStyle(
-                  color: Colors.red[600],
+                  color: Colors.redAccent,
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
                 ),
@@ -184,15 +207,21 @@ class _ParcelScreenState extends State<ParcelScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('ปิด'),
+            child: const Text('ปิด', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
               await _confirmPickup(parcelId);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            child: const Text('ยืนยันรับพัสดุ', style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.amber,
+              foregroundColor: Colors.black,
+            ),
+            child: const Text(
+              'ยืนยันรับพัสดุ',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -201,92 +230,130 @@ class _ParcelScreenState extends State<ParcelScreen> {
 
   Future<void> _confirmPickup(String parcelId) async {
     try {
-      final response = await http.patch(
-        Uri.parse('$_backendUrl/api/parcel/pickup/$parcelId'),
-        headers: {'Content-Type': 'application/json'},
-      ).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        if (mounted) {
-          _showSnack('✅ รับพัสดุสำเร็จ!');
-          _loadAll();
-        }
+      final response = await http
+          .patch(
+            Uri.parse('$_backendUrl/api/parcel/pickup/$parcelId'),
+            headers: {'Content-Type': 'application/json'},
+          )
+          .timeout(const Duration(seconds: 10));
+      if (response.statusCode == 200 && mounted) {
+        _showSnack('✅ รับพัสดุสำเร็จ!');
+        _loadAll();
       }
     } catch (e) {
       if (mounted) _showSnack('เกิดข้อผิดพลาด: $e');
     }
   }
 
-  void _showSnack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
+  void _showSnack(String msg) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
-        title: const Text('Parcel & Locker', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Parcel & Locker',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
         elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        backgroundColor: const Color(0xFF1E1E1E),
+        foregroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, color: Colors.amber),
             onPressed: _isLoading ? null : _loadAll,
           ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: Colors.amber))
           : RefreshIndicator(
               onRefresh: _loadAll,
+              color: Colors.amber,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // แสดง error banner ถ้ามี
                     if (_errorMessage != null)
                       Container(
                         margin: const EdgeInsets.only(bottom: 16),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.orange[50],
+                          color: Colors.red.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.orange[200]!),
+                          border: Border.all(color: Colors.redAccent),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.wifi_off, color: Colors.orange, size: 18),
+                            const Icon(
+                              Icons.wifi_off,
+                              color: Colors.redAccent,
+                              size: 18,
+                            ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 _errorMessage!,
-                                style: const TextStyle(color: Colors.orange, fontSize: 13),
+                                style: const TextStyle(
+                                  color: Colors.redAccent,
+                                  fontSize: 13,
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ),
-                    _buildSectionTitle('🗄 Smart Locker Status'),
+                    const Text(
+                      '🗄 Smart Locker Status',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     _buildLockerGrid(),
                     const SizedBox(height: 8),
                     _buildLockerLegend(),
                     const SizedBox(height: 28),
-                    _buildSectionTitle('📦 พัสดุรอรับ (${_activeParcels.length})'),
+                    Text(
+                      '📦 พัสดุรอรับ (${_activeParcels.length})',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     _activeParcels.isEmpty
                         ? _buildEmptyState('ยังไม่มีพัสดุรอรับ')
-                        : Column(children: _activeParcels.map(_buildParcelCard).toList()),
+                        : Column(
+                            children: _activeParcels
+                                .map(_buildParcelCard)
+                                .toList(),
+                          ),
                     if (_historyParcels.isNotEmpty) ...[
                       const SizedBox(height: 28),
-                      _buildSectionTitle('✅ ประวัติการรับพัสดุ'),
+                      const Text(
+                        '✅ ประวัติการรับพัสดุ',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
                       const SizedBox(height: 12),
-                      Column(children: _historyParcels.take(5).map(_buildHistoryCard).toList()),
+                      Column(
+                        children: _historyParcels
+                            .take(5)
+                            .map(_buildHistoryCard)
+                            .toList(),
+                      ),
                     ],
                     const SizedBox(height: 40),
                   ],
@@ -295,11 +362,6 @@ class _ParcelScreenState extends State<ParcelScreen> {
             ),
     );
   }
-
-  Widget _buildSectionTitle(String text) => Text(
-        text,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-      );
 
   Widget _buildLockerGrid() {
     return GridView.builder(
@@ -314,51 +376,42 @@ class _ParcelScreenState extends State<ParcelScreen> {
       itemCount: _lockerStatus.length,
       itemBuilder: (context, index) {
         final status = _lockerStatus[index];
-        Color bgColor = Colors.white;
-        Color borderColor = Colors.grey[300]!;
+        Color bgColor = const Color(0xFF1E1E1E);
+        Color borderColor = const Color(0xFF2A2A2A);
         IconData? icon;
         Color iconColor = Colors.grey;
 
-        // หาพัสดุที่ตรงกับตู้นี้ (ของลูกบ้านคนนี้)
         final matchParcel = _activeParcels.firstWhere(
           (p) => p['lockerNumber'] == '${index + 1}',
           orElse: () => {},
         );
-
         final isMyParcel = matchParcel.isNotEmpty;
 
         if (isMyParcel) {
-          bgColor = Colors.blue[50]!;
-          borderColor = Colors.blue;
-          icon = Icons.inventory_2;
-          iconColor = Colors.blue;
+          bgColor = Colors.amber.withOpacity(0.15);
+          borderColor = Colors.amber;
+          icon = Icons.inventory_2_rounded;
+          iconColor = Colors.amber;
         } else if (status == 1) {
-          bgColor = Colors.grey[200]!;
-          borderColor = Colors.grey;
-          icon = Icons.lock_outline;
-          iconColor = Colors.grey;
+          bgColor = const Color(0xFF2A2A2A);
+          borderColor = const Color(0xFF333333);
+          icon = Icons.lock_outline_rounded;
+          iconColor = Colors.grey[600]!;
         }
 
         return GestureDetector(
           onTap: isMyParcel
               ? () => _showPickupQRCode(
-                    matchParcel['id'],
-                    matchParcel['carrier'] ?? 'ขนส่ง',
-                    '${index + 1}',
-                  )
+                  matchParcel['id'],
+                  matchParcel['carrier'] ?? 'ขนส่ง',
+                  '${index + 1}',
+                )
               : null,
           child: Container(
             decoration: BoxDecoration(
               color: bgColor,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: borderColor, width: 1.5),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                )
-              ],
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -376,7 +429,10 @@ class _ParcelScreenState extends State<ParcelScreen> {
                 const SizedBox(height: 2),
                 Text(
                   '${index + 1}',
-                  style: TextStyle(fontSize: 10, color: iconColor.withOpacity(0.7)),
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: iconColor.withOpacity(0.7),
+                  ),
                 ),
               ],
             ),
@@ -389,11 +445,15 @@ class _ParcelScreenState extends State<ParcelScreen> {
   Widget _buildLockerLegend() {
     return Row(
       children: [
-        _legendItem(Colors.blue[50]!, Colors.blue, 'ของฉัน'),
+        _legendItem(Colors.amber.withOpacity(0.15), Colors.amber, 'ของฉัน'),
         const SizedBox(width: 16),
-        _legendItem(Colors.grey[200]!, Colors.grey, 'ไม่ว่าง'),
+        _legendItem(
+          const Color(0xFF2A2A2A),
+          const Color(0xFF333333),
+          'ไม่ว่าง',
+        ),
         const SizedBox(width: 16),
-        _legendItem(Colors.white, Colors.grey[300]!, 'ว่าง'),
+        _legendItem(const Color(0xFF1E1E1E), const Color(0xFF2A2A2A), 'ว่าง'),
       ],
     );
   }
@@ -402,7 +462,8 @@ class _ParcelScreenState extends State<ParcelScreen> {
     return Row(
       children: [
         Container(
-          width: 16, height: 16,
+          width: 16,
+          height: 16,
           decoration: BoxDecoration(
             color: bg,
             border: Border.all(color: border),
@@ -427,17 +488,18 @@ class _ParcelScreenState extends State<ParcelScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF1E1E1E),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6, offset: const Offset(0, 2))
-        ],
+        border: Border.all(color: const Color(0xFF2A2A2A)),
       ),
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: Colors.blue[50],
-            child: const Icon(Icons.local_shipping, color: Colors.blue),
+            backgroundColor: Colors.amber.withOpacity(0.1),
+            child: const Icon(
+              Icons.local_shipping_rounded,
+              color: Colors.amber,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -446,13 +508,24 @@ class _ParcelScreenState extends State<ParcelScreen> {
               children: [
                 Text(
                   parcel['carrier'] ?? 'ขนส่ง',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Colors.white,
+                  ),
                 ),
                 Text(
                   'Locker #${parcel['lockerNumber']}',
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  style: const TextStyle(
+                    color: Colors.amber,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-                Text(timeStr, style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                Text(
+                  timeStr,
+                  style: const TextStyle(color: Colors.grey, fontSize: 11),
+                ),
               ],
             ),
           ),
@@ -463,11 +536,16 @@ class _ParcelScreenState extends State<ParcelScreen> {
               parcel['lockerNumber'] ?? '?',
             ),
             icon: const Icon(Icons.qr_code, size: 16),
-            label: const Text('QR Code', style: TextStyle(fontSize: 12)),
+            label: const Text(
+              'QR Code',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              backgroundColor: Colors.amber,
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
           ),
@@ -488,13 +566,13 @@ class _ParcelScreenState extends State<ParcelScreen> {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: const Color(0xFF1E1E1E),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey[200]!),
+        border: Border.all(color: const Color(0xFF2A2A2A)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.check_circle, color: Colors.green, size: 20),
+          const Icon(Icons.check_circle, color: Colors.greenAccent, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -502,7 +580,11 @@ class _ParcelScreenState extends State<ParcelScreen> {
               children: [
                 Text(
                   parcel['carrier'] ?? 'ขนส่ง',
-                  style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 13,
+                    color: Colors.white,
+                  ),
                 ),
                 Text(
                   'Locker #${parcel['lockerNumber']} • รับแล้ว $timeStr',
@@ -514,12 +596,16 @@ class _ParcelScreenState extends State<ParcelScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.green[50],
+              color: Colors.greenAccent.withOpacity(0.1),
               borderRadius: BorderRadius.circular(6),
             ),
             child: const Text(
               'รับแล้ว',
-              style: TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.greenAccent,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -531,7 +617,11 @@ class _ParcelScreenState extends State<ParcelScreen> {
     return Container(
       padding: const EdgeInsets.all(32),
       alignment: Alignment.center,
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1E1E),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF2A2A2A)),
+      ),
       child: Column(
         children: [
           const Icon(Icons.inventory_2_outlined, size: 48, color: Colors.grey),

@@ -9,12 +9,14 @@ import 'repair_screen.dart';
 import 'fees_screen.dart';
 import 'parcel_screen.dart';
 import 'visitor_screen.dart';
+import 'notification_screen.dart';
+// import 'notification_screen.dart'; // เปิดคอมเมนต์ถ้าคุณมีไฟล์หน้า Notification แล้ว
 
 class HomeScreen extends StatefulWidget {
   final String userName;
   final String userRole;
   final String userId;
-  final String roomNumber; // เพิ่ม roomNumber จาก backend
+  final String roomNumber;
 
   const HomeScreen({
     super.key,
@@ -34,7 +36,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Timer? _notifTimer;
   final String _backendUrl = 'http://10.0.2.2:3000';
 
-  // Invoice summary สำหรับหน้า Home
   double _totalUnpaid = 0;
   String _dueDateStr = '-';
   bool _invoiceLoaded = false;
@@ -59,9 +60,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _fetchUnreadCount() async {
     if (widget.userId.isEmpty) return;
     try {
-      final response = await http.get(
-        Uri.parse('$_backendUrl/api/auth/notifications/${widget.userId}'),
-      ).timeout(const Duration(seconds: 8));
+      final response = await http
+          .get(
+            Uri.parse('$_backendUrl/api/auth/notifications/${widget.userId}'),
+          )
+          .timeout(const Duration(seconds: 8));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true && mounted) {
@@ -74,28 +77,27 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (_) {}
   }
 
-  // ดึง invoice summary เพื่อแสดงบนหน้า Home
   Future<void> _fetchInvoiceSummary() async {
-    // ถ้าไม่มี userId หยุด spinner ทันที ไม่ต้อง request
     if (widget.userId.isEmpty) {
       if (mounted) setState(() => _invoiceLoaded = true);
       return;
     }
     try {
-      final response = await http.get(
-        Uri.parse('$_backendUrl/api/payment/invoices/${widget.userId}'),
-      ).timeout(const Duration(seconds: 8));
-
+      final response = await http
+          .get(Uri.parse('$_backendUrl/api/payment/invoices/${widget.userId}'))
+          .timeout(const Duration(seconds: 8));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final invoices = List<Map<String, dynamic>>.from(data['invoices'] ?? []);
-        final unpaid = invoices.where((inv) => inv['status'] == 'pending').toList();
-
+        final invoices = List<Map<String, dynamic>>.from(
+          data['invoices'] ?? [],
+        );
+        final unpaid = invoices
+            .where((inv) => inv['status'] == 'pending')
+            .toList();
         double total = unpaid.fold(
           0.0,
           (sum, inv) => sum + ((inv['amount'] ?? 0) as num).toDouble(),
         );
-
         String dueDate = '-';
         if (unpaid.isNotEmpty) {
           final raw = unpaid.first['dueDate'] ?? '';
@@ -104,8 +106,19 @@ class _HomeScreenState extends State<HomeScreen> {
               final dt = DateTime.tryParse(raw);
               if (dt != null) {
                 const months = [
-                  '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+                  '',
+                  'Jan',
+                  'Feb',
+                  'Mar',
+                  'Apr',
+                  'May',
+                  'Jun',
+                  'Jul',
+                  'Aug',
+                  'Sep',
+                  'Oct',
+                  'Nov',
+                  'Dec',
                 ];
                 dueDate = '${months[dt.month]} ${dt.day}, ${dt.year}';
               } else {
@@ -116,20 +129,17 @@ class _HomeScreenState extends State<HomeScreen> {
             }
           }
         }
-
         if (mounted) {
           setState(() {
             _totalUnpaid = total;
             _dueDateStr = dueDate;
-            _invoiceLoaded = true; // หยุด spinner
+            _invoiceLoaded = true;
           });
         }
       } else {
-        // HTTP error → หยุด spinner แสดงยอด 0
         if (mounted) setState(() => _invoiceLoaded = true);
       }
     } catch (_) {
-      // Network error / timeout → หยุด spinner แสดงยอด 0
       if (mounted) setState(() => _invoiceLoaded = true);
     }
   }
@@ -138,16 +148,20 @@ class _HomeScreenState extends State<HomeScreen> {
     bool? confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('ออกจากระบบ'),
-        content: const Text('คุณแน่ใจหรือไม่ว่าต้องการออกจากระบบ?'),
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: const Text('ออกจากระบบ', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'คุณแน่ใจหรือไม่ว่าต้องการออกจากระบบ?',
+          style: TextStyle(color: Colors.grey),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('ยกเลิก'),
+            child: const Text('ยกเลิก', style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('ยืนยัน', style: TextStyle(color: Colors.red)),
+            child: const Text('ยืนยัน', style: TextStyle(color: Colors.amber)),
           ),
         ],
       ),
@@ -165,11 +179,10 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         }
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('เกิดข้อผิดพลาด: $e')),
-          );
-        }
+        if (mounted)
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('เกิดข้อผิดพลาด: $e')));
       }
     }
   }
@@ -179,14 +192,19 @@ class _HomeScreenState extends State<HomeScreen> {
       case 0:
         return _buildHomeTab();
       case 1:
-        // ส่ง roomNumber ที่ถูกต้องไปยัง FeesScreen
         return FeesScreen(userId: widget.userId, roomId: widget.roomNumber);
       case 2:
-        return RepairScreen(userId: widget.userId, roomNumber: widget.roomNumber);
+        return RepairScreen(
+          userId: widget.userId,
+          roomNumber: widget.roomNumber,
+        );
       case 3:
         return ParcelScreen(userId: widget.userId);
       case 4:
-        return VisitorScreen(userId: widget.userId, roomNumber: widget.roomNumber);
+        return VisitorScreen(
+          userId: widget.userId,
+          roomNumber: widget.roomNumber,
+        );
       default:
         return _buildHomeTab();
     }
@@ -212,33 +230,50 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: const Color(0xFF121212),
       body: _getSelectedPage(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) => setState(() => _selectedIndex = index),
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.blue[700],
+        backgroundColor: const Color(0xFF1E1E1E),
+        selectedItemColor: Colors.amber,
         unselectedItemColor: Colors.grey,
         showUnselectedLabels: true,
         items: [
           const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          const BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Fees'),
-          const BottomNavigationBarItem(icon: Icon(Icons.build), label: 'Repair'),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.receipt_long),
+            label: 'Fees',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.build),
+            label: 'Repair',
+          ),
           BottomNavigationBarItem(
             icon: Stack(
               children: [
                 const Icon(Icons.inventory_2),
                 if (_unreadCount > 0)
                   Positioned(
-                    right: 0, top: 0,
+                    right: 0,
+                    top: 0,
                     child: Container(
                       padding: const EdgeInsets.all(2),
-                      decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                      constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                      decoration: const BoxDecoration(
+                        color: Colors.redAccent,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 14,
+                        minHeight: 14,
+                      ),
                       child: Text(
                         '$_unreadCount',
-                        style: const TextStyle(color: Colors.white, fontSize: 9),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -247,7 +282,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             label: 'Parcel',
           ),
-          const BottomNavigationBarItem(icon: Icon(Icons.person_add), label: 'Visitor'),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.person_add_rounded),
+            label: 'Visitor',
+          ),
         ],
       ),
     );
@@ -259,9 +297,9 @@ class _HomeScreenState extends State<HomeScreen> {
         Container(
           height: 280,
           padding: const EdgeInsets.only(top: 60, left: 24, right: 24),
-          decoration: BoxDecoration(
-            color: Colors.blue[600],
-            borderRadius: const BorderRadius.only(
+          decoration: const BoxDecoration(
+            color: Color(0xFF1E1E1E),
+            borderRadius: BorderRadius.only(
               bottomLeft: Radius.circular(30),
               bottomRight: Radius.circular(30),
             ),
@@ -274,20 +312,32 @@ class _HomeScreenState extends State<HomeScreen> {
                   Row(
                     children: [
                       CircleAvatar(
-                        backgroundColor: Colors.white.withOpacity(0.2),
+                        backgroundColor: Colors.amber.withOpacity(0.2),
                         child: Text(
-                          widget.userName.isNotEmpty ? widget.userName[0].toUpperCase() : '?',
-                          style: const TextStyle(color: Colors.white),
+                          widget.userName.isNotEmpty
+                              ? widget.userName[0].toUpperCase()
+                              : '?',
+                          style: const TextStyle(
+                            color: Colors.amber,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Welcome back,', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                          const Text(
+                            'Welcome back,',
+                            style: TextStyle(color: Colors.grey, fontSize: 12),
+                          ),
                           Text(
                             widget.userName,
-                            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
@@ -296,12 +346,24 @@ class _HomeScreenState extends State<HomeScreen> {
                   Row(
                     children: [
                       IconButton(
-                        onPressed: () {},
-                        icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+                        onPressed: () {
+                          // ---------- แก้ไขตรงนี้ ----------
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const NotificationScreen(),
+                            ),
+                          );
+                          // -------------------------------
+                        },
+                        icon: const Icon(
+                          Icons.notifications_outlined,
+                          color: Colors.amber,
+                        ),
                       ),
                       IconButton(
                         onPressed: _handleLogout,
-                        icon: const Icon(Icons.logout, color: Colors.white),
+                        icon: const Icon(Icons.logout, color: Colors.grey),
                       ),
                     ],
                   ),
@@ -319,22 +381,28 @@ class _HomeScreenState extends State<HomeScreen> {
     final hasUnpaid = _totalUnpaid > 0;
     final amountStr = _totalUnpaid
         .toStringAsFixed(0)
-        .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+        .replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (m) => '${m[1]},',
+        );
 
     return Container(
       margin: const EdgeInsets.only(top: 130, left: 24, right: 24),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF262626),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5)),
-        ],
+        border: Border.all(color: const Color(0xFF333333)),
       ),
       child: !_invoiceLoaded
           ? const SizedBox(
               height: 60,
-              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: Colors.amber,
+                  strokeWidth: 2,
+                ),
+              ),
             )
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -342,25 +410,39 @@ class _HomeScreenState extends State<HomeScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Outstanding Common Fee', style: TextStyle(color: Colors.grey)),
+                    const Text(
+                      'Outstanding Common Fee',
+                      style: TextStyle(color: Colors.grey),
+                    ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: hasUnpaid ? Colors.red[50] : Colors.green[50],
+                        color: hasUnpaid
+                            ? Colors.red.withOpacity(0.1)
+                            : Colors.green.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         children: [
                           Icon(
-                            hasUnpaid ? Icons.error_outline : Icons.check_circle_outline,
+                            hasUnpaid
+                                ? Icons.error_outline
+                                : Icons.check_circle_outline,
                             size: 14,
-                            color: hasUnpaid ? Colors.red : Colors.green,
+                            color: hasUnpaid
+                                ? Colors.redAccent
+                                : Colors.greenAccent,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             hasUnpaid ? 'Unpaid' : 'Paid',
                             style: TextStyle(
-                              color: hasUnpaid ? Colors.red : Colors.green,
+                              color: hasUnpaid
+                                  ? Colors.redAccent
+                                  : Colors.greenAccent,
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
                             ),
@@ -373,7 +455,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 8),
                 Text(
                   hasUnpaid ? 'THB $amountStr' : 'THB 0',
-                  style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.black87),
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.amber,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -387,8 +473,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       onPressed: () => setState(() => _selectedIndex = 1),
                       child: const Row(
                         children: [
-                          Text('View Details'),
-                          Icon(Icons.chevron_right, size: 16),
+                          Text(
+                            'View Details',
+                            style: TextStyle(color: Colors.amber),
+                          ),
+                          Icon(
+                            Icons.chevron_right,
+                            size: 16,
+                            color: Colors.amber,
+                          ),
                         ],
                       ),
                     ),
@@ -405,15 +498,37 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Quick Actions', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text(
+            'Quick Actions',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildActionButton(Icons.payment, 'Pay Fee', Colors.blue, 1),
-              _buildActionButton(Icons.build_rounded, 'Repair', Colors.orange, 2),
-              _buildActionButton(Icons.inventory_2_rounded, 'Parcel', Colors.green, 3),
-              _buildActionButton(Icons.person_add_rounded, 'Visitor', Colors.teal, 4),
+              _buildActionButton(Icons.payment, 'Pay Fee', Colors.amber, 1),
+              _buildActionButton(
+                Icons.build_rounded,
+                'Repair',
+                Colors.amber,
+                2,
+              ),
+              _buildActionButton(
+                Icons.inventory_2_rounded,
+                'Parcel',
+                Colors.amber,
+                3,
+              ),
+              _buildActionButton(
+                Icons.person_add_rounded,
+                'Visitor',
+                Colors.amber,
+                4,
+              ),
             ],
           ),
         ],
@@ -421,21 +536,35 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildActionButton(IconData icon, String label, Color color, int targetIndex) {
+  Widget _buildActionButton(
+    IconData icon,
+    String label,
+    Color color,
+    int targetIndex,
+  ) {
     return GestureDetector(
       onTap: () => setState(() => _selectedIndex = targetIndex),
       child: Column(
         children: [
           Container(
-            width: 60, height: 60,
+            width: 60,
+            height: 60,
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: color.withOpacity(0.3)),
             ),
             child: Icon(icon, color: color, size: 28),
           ),
           const SizedBox(height: 8),
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: Colors.white70,
+            ),
+          ),
         ],
       ),
     );
@@ -450,9 +579,9 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: const Color(0xFF1E1E1E),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: const Color(0xFF2A2A2A)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -460,17 +589,34 @@ class _HomeScreenState extends State<HomeScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Your Unit', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                const Text(
+                  'Your Unit',
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
                 const SizedBox(height: 4),
-                Text(roomDisplay, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                Text(
+                  roomDisplay,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
               ],
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(20)),
+              decoration: BoxDecoration(
+                color: Colors.amber.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
               child: Text(
                 widget.userRole,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black54),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.amber,
+                ),
               ),
             ),
           ],
@@ -488,8 +634,21 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('กำหนดการสำคัญ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              TextButton(onPressed: () {}, child: const Text('ดูปฏิทิน')),
+              const Text(
+                'กำหนดการสำคัญ',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              TextButton(
+                onPressed: () {},
+                child: const Text(
+                  'ดูปฏิทิน',
+                  style: TextStyle(color: Colors.amber),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -498,37 +657,33 @@ class _HomeScreenState extends State<HomeScreen> {
             '10 เม.ย. 2026 | 09:00 - 12:00',
             'อาคาร A และ พื้นที่ส่วนกลาง',
             Icons.flash_off_rounded,
-            Colors.orange,
+            Colors.amber,
           ),
           _buildScheduleItem(
             'ฉีดพ่นยากำจัดแมลง',
             '12 เม.ย. 2026 | 13:00 เป็นต้นไป',
             'ทุกยูนิต และสวนหย่อม',
             Icons.bug_report_outlined,
-            Colors.green,
-          ),
-          _buildScheduleItem(
-            'ตรวจสอบระบบดับเพลิงประจำปี',
-            '15 เม.ย. 2026 | 10:00 - 15:00',
-            'ทุกพื้นที่ภายในโครงการ',
-            Icons.fire_extinguisher_rounded,
-            Colors.red,
+            Colors.amber,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildScheduleItem(String title, String time, String location, IconData icon, Color color) {
+  Widget _buildScheduleItem(
+    String title,
+    String time,
+    String location,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF1E1E1E),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade100),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4)),
-        ],
+        border: Border.all(color: const Color(0xFF2A2A2A)),
       ),
       child: IntrinsicHeight(
         child: Row(
@@ -546,7 +701,10 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(width: 16),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 16,
+                  horizontal: 8,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -555,25 +713,28 @@ class _HomeScreenState extends State<HomeScreen> {
                         Icon(icon, size: 18, color: color),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          child: Text(
+                            title,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: Colors.white,
+                            ),
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(Icons.access_time, size: 14, color: Colors.grey),
-                        const SizedBox(width: 4),
-                        Text(time, style: const TextStyle(color: Colors.black87, fontSize: 12)),
-                      ],
+                    Text(
+                      time,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
-                        const SizedBox(width: 4),
-                        Text(location, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                      ],
+                    Text(
+                      location,
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
                     ),
                   ],
                 ),

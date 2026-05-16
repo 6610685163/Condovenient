@@ -5,7 +5,6 @@ import 'dart:convert';
 class FeesScreen extends StatefulWidget {
   final String userId;
   final String roomId;
-
   const FeesScreen({super.key, this.userId = '', this.roomId = ''});
 
   @override
@@ -18,15 +17,9 @@ class _FeesScreenState extends State<FeesScreen> {
   bool _isLoading = true;
   String? _errorMessage;
 
-  double get _totalUnpaid {
-    return _invoices
-        .where((inv) => inv['status'] == 'pending')
-        .fold(
-          0.0,
-          (sum, inv) => sum + ((inv['amount'] ?? 0) as num).toDouble(),
-        );
-  }
-
+  double get _totalUnpaid => _invoices
+      .where((inv) => inv['status'] == 'pending')
+      .fold(0.0, (sum, inv) => sum + ((inv['amount'] ?? 0) as num).toDouble());
   Map<String, dynamic>? get _latestUnpaidInvoice {
     final unpaid = _invoices
         .where((inv) => inv['status'] == 'pending')
@@ -56,7 +49,6 @@ class _FeesScreenState extends State<FeesScreen> {
             headers: {'Content-Type': 'application/json'},
           )
           .timeout(const Duration(seconds: 10));
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         setState(() {
@@ -66,8 +58,7 @@ class _FeesScreenState extends State<FeesScreen> {
       } else {
         setState(() {
           _isLoading = false;
-          _errorMessage =
-              'ไม่สามารถโหลดข้อมูล Invoice ได้ (${response.statusCode})';
+          _errorMessage = 'ไม่สามารถโหลดข้อมูล Invoice ได้';
         });
       }
     } catch (e) {
@@ -82,7 +73,7 @@ class _FeesScreenState extends State<FeesScreen> {
     if (_latestUnpaidInvoice == null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('ไม่มียอดค้างชำระในขณะนี้')));
+      ).showSnackBar(const SnackBar(content: Text('ไม่มียอดค้างชำระ')));
       return;
     }
     showModalBottomSheet(
@@ -129,27 +120,28 @@ class _FeesScreenState extends State<FeesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
         title: const Text(
           'ชำระค่าส่วนกลาง',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        backgroundColor: const Color(0xFF1E1E1E),
+        foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, color: Colors.amber),
             onPressed: _isLoading ? null : _loadInvoices,
           ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: Colors.amber))
           : RefreshIndicator(
               onRefresh: _loadInvoices,
+              color: Colors.amber,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(24.0),
@@ -161,15 +153,15 @@ class _FeesScreenState extends State<FeesScreen> {
                         margin: const EdgeInsets.only(bottom: 16),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.orange[50],
+                          color: Colors.red.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.orange[200]!),
+                          border: Border.all(color: Colors.redAccent),
                         ),
                         child: Row(
                           children: [
                             const Icon(
                               Icons.wifi_off,
-                              color: Colors.orange,
+                              color: Colors.redAccent,
                               size: 18,
                             ),
                             const SizedBox(width: 8),
@@ -177,7 +169,7 @@ class _FeesScreenState extends State<FeesScreen> {
                               child: Text(
                                 _errorMessage!,
                                 style: const TextStyle(
-                                  color: Colors.orange,
+                                  color: Colors.redAccent,
                                   fontSize: 13,
                                 ),
                               ),
@@ -185,8 +177,6 @@ class _FeesScreenState extends State<FeesScreen> {
                           ],
                         ),
                       ),
-
-                    // การ์ดยอดค้างชำระ
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
@@ -194,15 +184,15 @@ class _FeesScreenState extends State<FeesScreen> {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: _totalUnpaid > 0
-                              ? [Colors.blue[700]!, Colors.blue[500]!]
+                              ? [Colors.amber[600]!, Colors.amber[400]!]
                               : [Colors.green[600]!, Colors.green[400]!],
                         ),
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
                             color:
-                                (_totalUnpaid > 0 ? Colors.blue : Colors.green)
-                                    .withOpacity(0.3),
+                                (_totalUnpaid > 0 ? Colors.amber : Colors.green)
+                                    .withOpacity(0.2),
                             blurRadius: 15,
                             offset: const Offset(0, 8),
                           ),
@@ -217,8 +207,9 @@ class _FeesScreenState extends State<FeesScreen> {
                               const Text(
                                 'ยอดค้างชำระรวม',
                                 style: TextStyle(
-                                  color: Colors.white70,
+                                  color: Colors.black87,
                                   fontSize: 14,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                               Container(
@@ -227,15 +218,15 @@ class _FeesScreenState extends State<FeesScreen> {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: _totalUnpaid > 0
-                                      ? Colors.redAccent
-                                      : Colors.green[800],
+                                  color: Colors.black,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
                                   _totalUnpaid > 0 ? 'Unpaid' : 'Paid ✓',
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: _totalUnpaid > 0
+                                        ? Colors.amber
+                                        : Colors.greenAccent,
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -249,7 +240,7 @@ class _FeesScreenState extends State<FeesScreen> {
                                 ? '฿ ${_totalUnpaid.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}'
                                 : '฿ 0.00',
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: Colors.black,
                               fontSize: 36,
                               fontWeight: FontWeight.bold,
                             ),
@@ -264,8 +255,9 @@ class _FeesScreenState extends State<FeesScreen> {
                                   const Text(
                                     'ครบกำหนดชำระ',
                                     style: TextStyle(
-                                      color: Colors.white70,
+                                      color: Colors.black54,
                                       fontSize: 12,
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
@@ -276,9 +268,9 @@ class _FeesScreenState extends State<FeesScreen> {
                                           )
                                         : 'ไม่มียอดค้างชำระ',
                                     style: const TextStyle(
-                                      color: Colors.white,
+                                      color: Colors.black,
                                       fontSize: 14,
-                                      fontWeight: FontWeight.w500,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ],
@@ -287,8 +279,8 @@ class _FeesScreenState extends State<FeesScreen> {
                                 ElevatedButton(
                                   onPressed: _showPaymentGateway,
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    foregroundColor: Colors.blue[700],
+                                    backgroundColor: Colors.black,
+                                    foregroundColor: Colors.amber,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
@@ -310,23 +302,23 @@ class _FeesScreenState extends State<FeesScreen> {
                       ),
                     ),
                     const SizedBox(height: 32),
-
                     const Text(
                       'ประวัติการชำระเงิน',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
                     const SizedBox(height: 16),
-
                     if (_invoices.isEmpty)
                       Container(
                         padding: const EdgeInsets.all(32),
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: const Color(0xFF1E1E1E),
                           borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFF2A2A2A)),
                         ),
                         child: const Column(
                           children: [
@@ -371,21 +363,23 @@ class _FeesScreenState extends State<FeesScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF1E1E1E),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: const Color(0xFF2A2A2A)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: isPaid ? Colors.green[50] : Colors.red[50],
+              color: isPaid
+                  ? Colors.greenAccent.withOpacity(0.1)
+                  : Colors.amber.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.receipt_long,
-              color: isPaid ? Colors.green[600] : Colors.red[400],
+              color: isPaid ? Colors.greenAccent : Colors.amber,
             ),
           ),
           const SizedBox(width: 16),
@@ -398,6 +392,7 @@ class _FeesScreenState extends State<FeesScreen> {
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
+                    color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -416,13 +411,14 @@ class _FeesScreenState extends State<FeesScreen> {
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
+                  color: Colors.white,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 isPaid ? 'ชำระแล้ว' : 'ค้างชำระ',
                 style: TextStyle(
-                  color: isPaid ? Colors.green : Colors.red,
+                  color: isPaid ? Colors.greenAccent : Colors.redAccent,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                 ),
@@ -435,7 +431,6 @@ class _FeesScreenState extends State<FeesScreen> {
   }
 }
 
-// ============================================================================
 class PaymentGatewaySheet extends StatefulWidget {
   final String backendUrl;
   final String roomId;
@@ -463,21 +458,18 @@ class _PaymentGatewaySheetState extends State<PaymentGatewaySheet> {
   bool _isProcessing = false;
   String? _errorMsg;
 
-  String get _amountFormatted {
-    return widget.amount
-        .toStringAsFixed(2)
-        .replaceAllMapped(
-          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-          (m) => '${m[1]},',
-        );
-  }
+  String get _amountFormatted => widget.amount
+      .toStringAsFixed(2)
+      .replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+        (m) => '${m[1]},',
+      );
 
   void _processPayment() async {
     setState(() {
       _isProcessing = true;
       _errorMsg = null;
     });
-
     try {
       final paymentResponse = await http
           .post(
@@ -495,25 +487,20 @@ class _PaymentGatewaySheetState extends State<PaymentGatewaySheet> {
           )
           .timeout(const Duration(seconds: 15));
 
-      if (paymentResponse.statusCode != 201) {
-        throw Exception(
-          'ไม่สามารถบันทึกการชำระเงินได้ (${paymentResponse.statusCode})',
-        );
-      }
-
+      if (paymentResponse.statusCode != 201)
+        throw Exception('ไม่สามารถบันทึกการชำระเงินได้');
       final paymentData = jsonDecode(paymentResponse.body);
-      final String paymentId = paymentData['paymentId'];
-
       final verifyResponse = await http
           .post(
-            Uri.parse('${widget.backendUrl}/api/payment/verify/$paymentId'),
+            Uri.parse(
+              '${widget.backendUrl}/api/payment/verify/${paymentData['paymentId']}',
+            ),
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode({'invoiceId': widget.invoiceId}),
           )
           .timeout(const Duration(seconds: 15));
 
       final verifyData = jsonDecode(verifyResponse.body);
-
       if (!mounted) return;
       setState(() => _isProcessing = false);
 
@@ -522,22 +509,27 @@ class _PaymentGatewaySheetState extends State<PaymentGatewaySheet> {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
+            backgroundColor: const Color(0xFF1E1E1E),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
+              side: const BorderSide(color: Color(0xFF2A2A2A)),
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.check_circle, color: Colors.green, size: 64),
+                const Icon(Icons.check_circle, color: Colors.amber, size: 64),
                 const SizedBox(height: 16),
                 const Text(
                   'ชำระเงินสำเร็จ',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'ระบบได้รับยอดเงิน ฿$_amountFormatted แล้ว\n'
-                  '${verifyData['receiptId'] != null ? 'ใบเสร็จ #${verifyData['receiptId']}' : ''}',
+                  'ระบบได้รับยอดเงิน ฿$_amountFormatted แล้ว',
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: Colors.grey),
                 ),
@@ -550,14 +542,15 @@ class _PaymentGatewaySheetState extends State<PaymentGatewaySheet> {
                       widget.onPaymentSuccess?.call();
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue[700],
+                      backgroundColor: Colors.amber,
+                      foregroundColor: Colors.black,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
                     child: const Text(
                       'กลับสู่หน้าหลัก',
-                      style: TextStyle(color: Colors.white),
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
@@ -566,18 +559,16 @@ class _PaymentGatewaySheetState extends State<PaymentGatewaySheet> {
           ),
         );
       } else {
-        setState(() {
-          _errorMsg =
-              verifyData['message'] ?? 'การชำระเงินไม่สำเร็จ กรุณาลองใหม่';
-        });
+        setState(
+          () => _errorMsg = verifyData['message'] ?? 'การชำระเงินไม่สำเร็จ',
+        );
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted)
         setState(() {
           _isProcessing = false;
           _errorMsg = 'เกิดข้อผิดพลาด: $e';
         });
-      }
     }
   }
 
@@ -586,7 +577,7 @@ class _PaymentGatewaySheetState extends State<PaymentGatewaySheet> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFF1E1E1E),
         borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
       child: Column(
@@ -598,7 +589,7 @@ class _PaymentGatewaySheetState extends State<PaymentGatewaySheet> {
               width: 40,
               height: 5,
               decoration: BoxDecoration(
-                color: Colors.grey[300],
+                color: Colors.grey[800],
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
@@ -606,48 +597,56 @@ class _PaymentGatewaySheetState extends State<PaymentGatewaySheet> {
           const SizedBox(height: 24),
           const Text(
             'เลือกช่องทางการชำระเงิน',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
           const SizedBox(height: 20),
-
           _buildMethodTile(
             0,
             Icons.qr_code_scanner,
-            Colors.blue,
+            Colors.amber,
             'สแกน QR PromptPay',
           ),
           const SizedBox(height: 12),
           _buildMethodTile(
             1,
             Icons.credit_card,
-            Colors.orange,
+            Colors.amber,
             'บัตรเครดิต / เดบิต',
           ),
-
           if (_errorMsg != null) ...[
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.red[50],
+                color: Colors.red.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.red[200]!),
+                border: Border.all(color: Colors.redAccent),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.error_outline, color: Colors.red, size: 18),
+                  const Icon(
+                    Icons.error_outline,
+                    color: Colors.redAccent,
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       _errorMsg!,
-                      style: const TextStyle(color: Colors.red, fontSize: 13),
+                      style: const TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
           ],
-
           const SizedBox(height: 32),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -664,6 +663,7 @@ class _PaymentGatewaySheetState extends State<PaymentGatewaySheet> {
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
+                      color: Colors.amber,
                     ),
                   ),
                 ],
@@ -674,20 +674,18 @@ class _PaymentGatewaySheetState extends State<PaymentGatewaySheet> {
                 child: ElevatedButton(
                   onPressed: _isProcessing ? null : _processPayment,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[700],
-                    disabledBackgroundColor: Colors.grey[400],
+                    backgroundColor: Colors.amber,
+                    foregroundColor: Colors.black,
+                    disabledBackgroundColor: Colors.grey[800],
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
                   child: _isProcessing
-                      ? const CircularProgressIndicator(color: Colors.white)
+                      ? const CircularProgressIndicator(color: Colors.black)
                       : const Text(
                           'ยืนยันชำระเงิน',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                 ),
               ),
@@ -707,11 +705,13 @@ class _PaymentGatewaySheetState extends State<PaymentGatewaySheet> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           border: Border.all(
-            color: isSelected ? Colors.blue : Colors.grey.shade300,
+            color: isSelected ? Colors.amber : const Color(0xFF2A2A2A),
             width: 2,
           ),
           borderRadius: BorderRadius.circular(16),
-          color: isSelected ? Colors.blue[50] : Colors.white,
+          color: isSelected
+              ? Colors.amber.withOpacity(0.05)
+              : const Color(0xFF121212),
         ),
         child: Row(
           children: [
@@ -723,10 +723,11 @@ class _PaymentGatewaySheetState extends State<PaymentGatewaySheet> {
                 style: const TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 16,
+                  color: Colors.white,
                 ),
               ),
             ),
-            if (isSelected) const Icon(Icons.check_circle, color: Colors.blue),
+            if (isSelected) const Icon(Icons.check_circle, color: Colors.amber),
           ],
         ),
       ),
