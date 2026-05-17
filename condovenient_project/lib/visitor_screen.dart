@@ -5,7 +5,6 @@ import 'dart:convert';
 class VisitorScreen extends StatefulWidget {
   final String userId;
   final String roomNumber;
-
   const VisitorScreen({super.key, this.userId = '', this.roomNumber = ''});
 
   @override
@@ -16,7 +15,6 @@ class _VisitorScreenState extends State<VisitorScreen> {
   final _formKey = GlobalKey<FormState>();
   final String _backendUrl = 'http://10.0.2.2:3000';
 
-  // ตัวแปรเก็บค่าฟอร์ม
   final _nameController = TextEditingController();
   final _plateController = TextEditingController();
   final _purposeController = TextEditingController();
@@ -33,9 +31,7 @@ class _VisitorScreenState extends State<VisitorScreen> {
   void _submitVisitorCheckIn() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isSubmitting = true);
-
       try {
-        // เรียก Backend API /api/visitors/check-in
         final response = await http.post(
           Uri.parse('$_backendUrl/api/visitors/check-in'),
           headers: {'Content-Type': 'application/json'},
@@ -44,30 +40,28 @@ class _VisitorScreenState extends State<VisitorScreen> {
             'plateNumber': _plateController.text.trim().toUpperCase(),
             'contactRoom': widget.roomNumber,
             'purpose': _purposeController.text.trim(),
-            'addedBy':
-                'ลูกบ้านห้อง ${widget.roomNumber}', // <-- เพิ่มส่วนนี้ เพื่อส่งให้ฝั่งเว็บรู้ว่าลูกบ้านห้องไหนเป็นคนแอด
+            'addedBy': 'ลูกบ้านห้อง ${widget.roomNumber}',
           }),
         );
-
         final data = jsonDecode(response.body);
 
         if (mounted) {
           setState(() => _isSubmitting = false);
-
           if (response.statusCode == 201) {
-            // โชว์ Pop-up สำเร็จ
             showDialog(
               context: context,
               builder: (context) => AlertDialog(
+                backgroundColor: const Color(0xFF1E1E1E),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
+                  side: const BorderSide(color: Color(0xFF2A2A2A)),
                 ),
                 content: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(
                       Icons.check_circle,
-                      color: Colors.green,
+                      color: Colors.amber,
                       size: 64,
                     ),
                     const SizedBox(height: 16),
@@ -76,6 +70,7 @@ class _VisitorScreenState extends State<VisitorScreen> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -89,21 +84,21 @@ class _VisitorScreenState extends State<VisitorScreen> {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
-                          Navigator.pop(context); // ปิด Pop-up
-                          // ล้างฟอร์ม
+                          Navigator.pop(context);
                           _nameController.clear();
                           _plateController.clear();
                           _purposeController.clear();
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue[700],
+                          backgroundColor: Colors.amber,
+                          foregroundColor: Colors.black,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
                         child: const Text(
                           'ตกลง',
-                          style: TextStyle(color: Colors.white),
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),
@@ -128,10 +123,28 @@ class _VisitorScreenState extends State<VisitorScreen> {
     }
   }
 
+  InputDecoration _buildInputDecoration(String hint, IconData icon) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: Colors.grey),
+      prefixIcon: Icon(icon, color: Colors.amber),
+      filled: true,
+      fillColor: const Color(0xFF1E1E1E),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFF2A2A2A)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.amber, width: 1.5),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
         title: const Text(
           'ลงทะเบียนผู้มาติดต่อ',
@@ -139,40 +152,39 @@ class _VisitorScreenState extends State<VisitorScreen> {
         ),
         centerTitle: true,
         elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        backgroundColor: const Color(0xFF1E1E1E),
+        foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- ส่วนคำอธิบาย ---
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.blue[50],
+                color: Colors.amber.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue[200]!),
+                border: Border.all(color: Colors.amber.withOpacity(0.3)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.info_outline, color: Colors.blue[700]),
+                  const Icon(Icons.info_outline, color: Colors.amber),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
+                      children: const [
+                        Text(
                           'ลงทะเบียนผู้มาติดต่อ',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Colors.blue,
+                            color: Colors.amber,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        const Text(
+                        SizedBox(height: 4),
+                        Text(
                           'กรุณากรอกข้อมูลผู้มาติดต่อเพื่อการรักษาความปลอดภัยของคอนโดมิเนียม',
                           style: TextStyle(fontSize: 12, color: Colors.grey),
                         ),
@@ -183,108 +195,79 @@ class _VisitorScreenState extends State<VisitorScreen> {
               ),
             ),
             const SizedBox(height: 28),
-
-            // --- ฟอร์ม ---
             Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ชื่อผู้มาติดต่อ
                   const Text(
                     'ชื่อผู้มาติดต่อ *',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _nameController,
-                    decoration: InputDecoration(
-                      hintText: 'เช่น สมชายดี ยืนยิ่ง',
-                      filled: true,
-                      fillColor: Colors.grey[100],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
+                    style: const TextStyle(color: Colors.white),
+                    decoration: _buildInputDecoration(
+                      'เช่น สมชาย ดีเยี่ยม',
+                      Icons.person_outline,
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'กรุณากรอกชื่อผู้มาติดต่อ';
-                      }
-                      return null;
-                    },
+                    validator: (value) => value == null || value.isEmpty
+                        ? 'กรุณากรอกชื่อผู้มาติดต่อ'
+                        : null,
                   ),
                   const SizedBox(height: 20),
-
-                  // ทะเบียนรถ
                   const Text(
                     'ทะเบียนรถ *',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _plateController,
-                    decoration: InputDecoration(
-                      hintText: 'เช่น กท 1234',
-                      filled: true,
-                      fillColor: Colors.grey[100],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                    ),
+                    style: const TextStyle(color: Colors.white),
                     textCapitalization: TextCapitalization.characters,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'กรุณากรอกทะเบียนรถ';
-                      }
-                      return null;
-                    },
+                    decoration: _buildInputDecoration(
+                      'เช่น กท 1234 (หากไม่มี ให้ระบุ "ไม่มี")',
+                      Icons.directions_car_outlined,
+                    ),
+                    validator: (value) => value == null || value.isEmpty
+                        ? 'กรุณากรอกทะเบียนรถ'
+                        : null,
                   ),
                   const SizedBox(height: 20),
-
-                  // ลบช่องกรอก "ห้องที่ติดต่อ" ออกแล้ว ระบบจะส่ง widget.roomNumber ไปเอง
-
-                  // วัตถุประสงค์
                   const Text(
                     'วัตถุประสงค์',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _purposeController,
-                    decoration: InputDecoration(
-                      hintText: 'เช่น ส่งของ, ซ่อมแซม',
-                      filled: true,
-                      fillColor: Colors.grey[100],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
+                    style: const TextStyle(color: Colors.white),
+                    decoration: _buildInputDecoration(
+                      'เช่น ส่งของ, ซ่อมแซม, เพื่อน',
+                      Icons.edit_document,
                     ),
                   ),
-                  const SizedBox(height: 28),
-
-                  // ปุ่มส่ง
+                  const SizedBox(height: 32),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: _isSubmitting ? null : _submitVisitorCheckIn,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue[700],
-                        disabledBackgroundColor: Colors.grey[400],
+                        backgroundColor: Colors.amber,
+                        disabledBackgroundColor: Colors.grey[800],
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -297,14 +280,14 @@ class _VisitorScreenState extends State<VisitorScreen> {
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.white,
+                                  Colors.black,
                                 ),
                               ),
                             )
                           : const Text(
                               'ลงทะเบียนเข้า',
                               style: TextStyle(
-                                color: Colors.white,
+                                color: Colors.black,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               ),
