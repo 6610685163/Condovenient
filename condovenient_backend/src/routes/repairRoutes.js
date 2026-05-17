@@ -14,4 +14,6 @@ router.get('/list/:userId', repairController.getRepairList);
 
 router.patch('/accept/:ticketId', repairController.acceptJob);
 
+router.get('/technician/:technicianId', repairController.getJobsByTechnician);
+
 module.exports = router;

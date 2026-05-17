@@ -202,7 +202,32 @@ exports.acceptJob = async (req, res) => {
     }
 };
 
+// --- 5. ดูงานที่ได้รับมอบหมายของช่างคนหนึ่ง ---
+exports.getJobsByTechnician = async (req, res) => {
+    try {
+        const { technicianId } = req.params;
+        const { status } = req.query;
 
+        let tickets = [];
+        try {
+            let query = db.collection('repairTickets').where('technicianId', '==', technicianId);
+            if (status) query = query.where('status', '==', status);
+            const snapshot = await query.orderBy('updatedAt', 'desc').get();
+            snapshot.forEach(doc => tickets.push({ id: doc.id, ...doc.data() }));
+        } catch (indexErr) {
+            const snapshot = await db.collection('repairTickets')
+                .where('technicianId', '==', technicianId)
+                .get();
+            snapshot.forEach(doc => tickets.push({ id: doc.id, ...doc.data() }));
+            if (status) tickets = tickets.filter(t => t.status === status);
+            tickets.sort((a, b) => (b.updatedAt?.seconds || 0) - (a.updatedAt?.seconds || 0));
+        }
+
+        res.status(200).json(tickets);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
 
 // --- (Option) ดึงรายการแจ้งซ่อมคงเดิม ---
 exports.getRepairList = async (req, res) => {
