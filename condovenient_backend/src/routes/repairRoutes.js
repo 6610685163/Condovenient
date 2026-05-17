@@ -11,4 +11,7 @@ router.get('/list', repairController.getRepairList);
 // 3. ดูรายการแจ้งซ่อมรายคน
 router.get('/list/:userId', repairController.getRepairList);
 
+
+router.patch('/accept/:ticketId', repairController.acceptJob);
+
 module.exports = router;
