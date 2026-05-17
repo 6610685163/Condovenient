@@ -49,3 +49,6 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
     console.log(`🚀 Server is running on port ${PORT}`);
 });
+
+const notificationRoutes = require('./src/routes/notificationRoutes');
+app.use('/api/notifications', notificationRoutes);

@@ -147,7 +147,7 @@ exports.verifyBankPayment = async (req, res) => {
             await db.collection('commonFees').doc(paymentId).update({
                 status: 'paid',
                 paidAt: admin.firestore.FieldValue.serverTimestamp(),
-            }).catch(() => {});
+            }).catch(() => { });
 
             if (invoiceId) {
                 await db.collection('invoices').doc(invoiceId).update({
@@ -222,5 +222,50 @@ exports.getPaymentHistory = async (req, res) => {
         res.status(200).json(history);
     } catch (error) {
         res.status(500).json({ error: error.message });
+    }
+};
+
+exports.updateInvoice = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { amount, description, dueDate, status } = req.body;
+
+        const updateData = {
+            amount: parseFloat(amount),
+            description: description,
+            dueDate: dueDate,
+            status: status, // pending, paid, overdue
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        };
+
+        // ถ้าอัปเดตเป็นสถานะ paid ให้แสตมป์เวลาที่จ่ายด้วย
+        if (status === 'paid') {
+            updateData.paidAt = admin.firestore.FieldValue.serverTimestamp();
+        }
+
+        await db.collection('invoices').doc(id).update(updateData);
+
+        res.status(200).json({
+            success: true,
+            message: 'อัปเดต Invoice เรียบร้อยแล้ว'
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: 'เกิดข้อผิดพลาดในการอัปเดต: ' + error.message });
+    }
+};
+
+// --- เพิ่มใหม่: ฟังก์ชันสำหรับลบ Invoice ---
+exports.deleteInvoice = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        await db.collection('invoices').doc(id).delete();
+
+        res.status(200).json({
+            success: true,
+            message: 'ลบ Invoice ออกจากระบบเรียบร้อยแล้ว'
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: 'เกิดข้อผิดพลาดในการลบ: ' + error.message });
     }
 };

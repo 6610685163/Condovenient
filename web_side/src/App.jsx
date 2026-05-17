@@ -20,6 +20,7 @@ import WorkingStatus from './pages/technician/WorkingStatus';
 import MyFeedback from './pages/technician/MyFeedback';
 
 import ProtectedRoute from './components/ProtectedRoute';
+import Settings from './pages/Settings';
 
 function App() {
   return (
@@ -37,6 +38,7 @@ function App() {
           <Route path="notifications" element={<Notifications />} />
           <Route path="parcels" element={<Parcels />} />
           <Route path="visitors" element={<Visitors />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
 
         <Route path="/technician" element={

@@ -12,6 +12,9 @@ router.get('/payment-history/:roomId', paymentController.getPaymentHistory);
 router.post('/invoices', paymentController.createInvoice);
 router.get('/invoices/:userId', paymentController.getInvoices);
 
+router.put('/invoices/:id', paymentController.updateInvoice);
+router.delete('/invoices/:id', paymentController.deleteInvoice);
+
 // --- Routes สำหรับ Bank API Verification และ Receipt ---
 router.post('/verify/:paymentId', paymentController.verifyBankPayment);
 router.get('/receipts/:receiptId', paymentController.getReceipt);
