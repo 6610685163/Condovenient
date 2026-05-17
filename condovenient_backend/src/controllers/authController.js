@@ -110,7 +110,7 @@ exports.googleLogin = async (req, res) => {
         if (snapshot.empty) {
             // สร้าง Password มั่วๆ เพราะ User นี้เข้าผ่าน Google ไม่ต้องใช้ Password
             const randomPassword = Math.random().toString(36).slice(-8);
-
+            
             const newUser = {
                 username: email,
                 password: randomPassword,
@@ -157,6 +157,7 @@ exports.googleLogin = async (req, res) => {
 
 exports.facebookLogin = async (req, res) => {
     const { token } = req.body;
+
     try {
         const decodedToken = await admin.auth().verifyIdToken(token);
         const { email, uid, name } = decodedToken;
@@ -229,6 +230,7 @@ exports.getAllUsers = async (req, res) => {
 
         // ส่งข้อมูลกลับไปเป็น JSON array
         res.json(users);
+
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ success: false, message: 'Server Error' });
@@ -265,77 +267,101 @@ exports.deleteUser = async (req, res) => {
     }
 };
 
-// // --- ฟังก์ชันใหม่: ส่ง Notification ให้ User ---
-// exports.receiveNotification = async (req, res) => {
-//     // รับค่า userId และข้อความแจ้งเตือนจาก body
-//     const { userId, title, message, type } = req.body;
+// --- ฟังก์ชันใหม่: ส่ง Notification ให้ User ---
+exports.receiveNotification = async (req, res) => {
+    // รับค่า userId และข้อความแจ้งเตือนจาก body
+    const { userId, title, message, type } = req.body;
 
-//     try {
-//         // ตรวจสอบว่า userId มีอยู่จริง
-//         const userRef = db.collection('users').doc(userId);
-//         const userDoc = await userRef.get();
+    try {
+        // ตรวจสอบว่า userId มีอยู่จริง
+        const userRef = db.collection('users').doc(userId);
+        const userDoc = await userRef.get();
 
-//         if (!userDoc.exists) {
-//             return res.status(404).json({ success: false, message: 'ไม่พบผู้ใช้งานนี้' });
-//         }
+        if (!userDoc.exists) {
+            return res.status(404).json({ success: false, message: 'ไม่พบผู้ใช้งานนี้' });
+        }
 
-//         // บันทึก Notification ลง Firestore ใน collection 'notifications'
-//         const notification = {
-//             userId: userId,
-//             title: title || 'แจ้งเตือนจากระบบ',
-//             message: message || '',
-//             type: type || 'general',   // เช่น 'payment', 'repair', 'general'
-//             isRead: false,              // ยังไม่ได้อ่าน
-//             createdAt: admin.firestore.FieldValue.serverTimestamp()
-//         };
+        // บันทึก Notification ลง Firestore ใน collection 'notifications'
+        const notification = {
+            userId: userId,
+            title: title || 'แจ้งเตือนจากระบบ',
+            message: message || '',
+            type: type || 'general',   // เช่น 'payment', 'repair', 'general'
+            isRead: false,              // ยังไม่ได้อ่าน
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        };
 
-//         const docRef = await db.collection('notifications').add(notification);
+        const docRef = await db.collection('notifications').add(notification);
 
-//         res.status(201).json({
-//             success: true,
-//             message: 'ส่งการแจ้งเตือนสำเร็จ',
-//             notificationId: docRef.id
-//         });
+        res.status(201).json({
+            success: true,
+            message: 'ส่งการแจ้งเตือนสำเร็จ',
+            notificationId: docRef.id
+        });
+    } catch (err) {
+        console.error('Notification Error:', err.message);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+};
 
-//     } catch (err) {
-//         console.error('Notification Error:', err.message);
-//         res.status(500).json({ success: false, message: 'Server Error' });
-//     }
-// };
+// --- ฟังก์ชันใหม่: ดึง Notification ของ User ---
+exports.getNotifications = async (req, res) => {
+    const { userId } = req.params;
+    
+    const serialize = (doc) => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt && data.createdAt.toDate 
+                ? data.createdAt.toDate().toISOString() 
+                : data.createdAt || null,
+            readAt: data.readAt && data.readAt.toDate 
+                ? data.readAt.toDate().toISOString() 
+                : data.readAt || null,
+        };
+    };
 
-// // --- ฟังก์ชันใหม่: ดึง Notification ของ User ---
-// exports.getNotifications = async (req, res) => {
-//     const { userId } = req.params;
+    try {
+        let notifications = [];
+        try {
+            const snapshot = await db.collection('notifications')
+                .where('userId', '==', userId)
+                .orderBy('createdAt', 'desc')
+                .get();
+            snapshot.forEach(doc => notifications.push(serialize(doc)));
+        } catch (indexErr) {
+            console.warn('Notifications index not ready, fallback:', indexErr.message);
+            const snapshot = await db.collection('notifications')
+                .where('userId', '==', userId)
+                .get();
+            snapshot.forEach(doc => notifications.push(serialize(doc)));
+            notifications.sort((a, b) => {
+                const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                return tB - tA;
+            });
+        }
+        res.status(200).json({ success: true, notifications });
+    } catch (err) {
+        console.error('getNotifications error:', err.message);
+        res.status(500).json({ success: false, message: 'Server Error: ' + err.message });
+    }
+};
 
-//     try {
-//         const snapshot = await db.collection('notifications')
-//             .where('userId', '==', userId)
-//             .orderBy('createdAt', 'desc')
-//             .get();
+// --- ฟังก์ชันใหม่: มาร์ค Notification ว่าอ่านแล้ว ---
+exports.markNotificationRead = async (req, res) => {
+    const { notificationId } = req.params;
 
-//         const notifications = [];
-//         snapshot.forEach(doc => notifications.push({ id: doc.id, ...doc.data() }));
+    try {
+        await db.collection('notifications').doc(notificationId).update({
+            isRead: true,
+            readAt: admin.firestore.FieldValue.serverTimestamp()
+        });
 
-//         res.status(200).json({ success: true, notifications });
-//     } catch (err) {
-//         console.error(err.message);
-//         res.status(500).json({ success: false, message: 'Server Error' });
-//     }
-// };
-
-// // --- ฟังก์ชันใหม่: มาร์ค Notification ว่าอ่านแล้ว ---
-// exports.markNotificationRead = async (req, res) => {
-//     const { notificationId } = req.params;
-
-//     try {
-//         await db.collection('notifications').doc(notificationId).update({
-//             isRead: true,
-//             readAt: admin.firestore.FieldValue.serverTimestamp()
-//         });
-
-//         res.status(200).json({ success: true, message: 'อัปเดตสถานะการอ่านแล้ว' });
-//     } catch (err) {
-//         console.error(err.message);
-//         res.status(500).json({ success: false, message: 'Server Error' });
-//     }
-// };
+        res.status(200).json({ success: true, message: 'อัปเดตสถานะการอ่านแล้ว' });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+};

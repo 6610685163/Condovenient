@@ -1,14 +1,24 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+
 import MainLayout from './layouts/MainLayout';
-import Dashboard from './pages/dashboard';
+import TechLayout from './layouts/TechLayout';
+
 import Login from './pages/Login';
 import Register from './pages/Register';
+
+import Dashboard from './pages/dashboard';
 import Residents from './pages/Residents';
 import Invoices from './pages/Invoices';
 import Repairs from './pages/Repairs';
 import Notifications from './pages/Notifications';
 import Parcels from './pages/Parcels';
 import Visitors from './pages/Visitors';
+
+import TechDashboard from './pages/technician/TechDashboard';
+import MyJobs from './pages/technician/MyJobs';
+import WorkingStatus from './pages/technician/WorkingStatus';
+import MyFeedback from './pages/technician/MyFeedback';
+
 import ProtectedRoute from './components/ProtectedRoute';
 import Settings from './pages/Settings';
 
@@ -16,9 +26,8 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* กลุ่ม 1: หน้าที่ต้องมี Sidebar (Admin Panel) */}
         <Route path="/" element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['admin']}>
             <MainLayout />
           </ProtectedRoute>
         }>
@@ -32,9 +41,21 @@ function App() {
           <Route path="settings" element={<Settings />} />
         </Route>
 
-        {/* กลุ่ม 2: หน้าที่ไม่ต้องมี Sidebar */}
+        <Route path="/technician" element={
+          <ProtectedRoute allowedRoles={['technician']}>
+            <TechLayout />
+          </ProtectedRoute>
+        }>
+          <Route index element={<TechDashboard />} />
+          <Route path="jobs" element={<MyJobs />} />
+          <Route path="status" element={<WorkingStatus />} />
+          <Route path="feedback" element={<MyFeedback />} />
+        </Route>
+
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   );

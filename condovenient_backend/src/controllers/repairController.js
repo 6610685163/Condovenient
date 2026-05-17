@@ -101,20 +101,132 @@ exports.closeRequest = async (req, res) => {
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        // แจ้งเตือนเจ้าของห้องว่างานซ่อมเสร็จแล้ว
+        // แจ้งเตือนเจ้าของห้องว่างานซ่อมเสร็จแล้ว + ขอให้กดให้คะแนน
+        // ห่อด้วย try/catch แยก เพื่อให้การปิดงานยังถือว่าสำเร็จ แม้ notification หรือ FCM จะล้ม
+// ห่อ notification ด้วย try/catch แยก เพื่อให้ปิดงานยังสำเร็จแม้ FCM/notification ล้ม
+        let notificationId = null;
+        try {
+            const notifRef = await db.collection('notifications').add({
+                userId: ticketData.userId,
+                title: 'งานซ่อมเสร็จสิ้นแล้ว',
+                message: `การแจ้งซ่อม "${ticketData.title}" เสร็จสิ้นแล้ว กรุณาตรวจรับงานและให้คะแนนช่าง`,
+                type: 'repair_completed',
+                ticketId: ticketId,
+                ticketTitle: ticketData.title || '',
+                technicianId: ticketData.technicianId || null,
+                technicianName: ticketData.technicianName || '',
+                requiresRating: true,
+                isRead: false,
+                createdAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+            notificationId = notifRef.id;
+            console.log(`[closeRequest] Notification created: ${notificationId} for user ${ticketData.userId}`);
+        } catch (notifErr) {
+            console.error('[closeRequest] Notification write failed:', notifErr.message);
+        }
+
+        // ส่ง FCM push (best-effort)
+        try {
+            const userDoc = await db.collection('users').doc(ticketData.userId).get();
+            const fcmToken = userDoc.exists ? userDoc.data().fcmToken : null;
+            if (fcmToken) {
+                await admin.messaging().send({
+                    notification: {
+                        title: 'งานซ่อมเสร็จสิ้นแล้ว',
+                        body: `"${ticketData.title}" เสร็จสิ้นแล้ว แตะเพื่อให้คะแนนช่าง`
+                    },
+                    data: {
+                        type: 'repair_completed',
+                        ticketId: String(ticketId),
+                        requiresRating: 'true'
+                    },
+                    token: fcmToken
+                });
+            }
+        } catch (pushErr) {
+            console.warn('[closeRequest] FCM push skipped:', pushErr.message);
+        }
+
+        res.status(200).json({
+            message: 'ปิดงานซ่อมและบันทึกข้อมูลเรียบร้อย',
+            notificationId
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'ไม่สามารถปิดงานได้: ' + error.message });
+    }
+};
+
+// --- 4. ฟังก์ชัน: ช่างกดรับงานที่ได้รับมอบหมาย (acceptJob) ---
+exports.acceptJob = async (req, res) => {
+    try {
+        const { ticketId } = req.params;
+        const { technicianId } = req.body;
+
+        const ticketRef = db.collection('repairTickets').doc(ticketId);
+        const ticketDoc = await ticketRef.get();
+        if (!ticketDoc.exists) {
+            return res.status(404).json({ error: 'ไม่พบใบแจ้งซ่อมนี้' });
+        }
+        const ticketData = ticketDoc.data();
+
+        // ต้องเป็นช่างที่ถูก assign จริง ๆ
+        if (technicianId && ticketData.technicianId && ticketData.technicianId !== technicianId) {
+            return res.status(403).json({ error: 'คุณไม่ใช่ช่างที่ได้รับมอบหมายงานนี้' });
+        }
+
+        if (ticketData.status !== 'assigned') {
+            return res.status(400).json({
+                error: `ไม่สามารถรับงานได้ (สถานะปัจจุบัน: ${ticketData.status})`
+            });
+        }
+
+        await ticketRef.update({
+            status: 'in_progress',
+            acceptedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        // แจ้งเตือนเจ้าของห้องว่าช่างรับงานแล้ว
         await db.collection('notifications').add({
             userId: ticketData.userId,
-            title: 'งานซ่อมเสร็จสิ้นแล้ว',
-            message: `การแจ้งซ่อม "${ticketData.title}" เสร็จสิ้นแล้ว กรุณาตรวจรับงาน`,
+            title: 'ช่างรับงานแล้ว',
+            message: `ช่าง ${ticketData.technicianName || ''} กำลังเข้าดำเนินการ "${ticketData.title}"`,
             type: 'repair',
-            ticketId: ticketId,
+            ticketId,
             isRead: false,
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        res.status(200).json({ message: 'ปิดงานซ่อมและบันทึกข้อมูลเรียบร้อย' });
+        res.status(200).json({ message: 'รับงานเรียบร้อย' });
     } catch (error) {
-        res.status(500).json({ error: 'ไม่สามารถปิดงานได้: ' + error.message });
+        res.status(500).json({ error: 'รับงานไม่สำเร็จ: ' + error.message });
+    }
+};
+
+// --- 5. ดูงานที่ได้รับมอบหมายของช่างคนหนึ่ง ---
+exports.getJobsByTechnician = async (req, res) => {
+    try {
+        const { technicianId } = req.params;
+        const { status } = req.query;
+
+        let tickets = [];
+        try {
+            let query = db.collection('repairTickets').where('technicianId', '==', technicianId);
+            if (status) query = query.where('status', '==', status);
+            const snapshot = await query.orderBy('updatedAt', 'desc').get();
+            snapshot.forEach(doc => tickets.push({ id: doc.id, ...doc.data() }));
+        } catch (indexErr) {
+            const snapshot = await db.collection('repairTickets')
+                .where('technicianId', '==', technicianId)
+                .get();
+            snapshot.forEach(doc => tickets.push({ id: doc.id, ...doc.data() }));
+            if (status) tickets = tickets.filter(t => t.status === status);
+            tickets.sort((a, b) => (b.updatedAt?.seconds || 0) - (a.updatedAt?.seconds || 0));
+        }
+
+        res.status(200).json(tickets);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
 };
 

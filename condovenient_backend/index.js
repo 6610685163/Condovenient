@@ -31,6 +31,15 @@ app.use('/api/parcel', parcelRoutes);
 const accessLogRoutes = require('./src/routes/accessLogRoutes');
 app.use('/api/access-log', accessLogRoutes);
 
+// staffRoutes (workingStatus ของ staff/technician)
+const staffRoutes = require('./src/routes/staffRoutes');
+app.use('/api/staff', staffRoutes);
+
+// ratingRoutes (submitRating + feedback)
+const ratingRoutes = require('./src/routes/ratingRoutes');
+app.use('/api/ratings', ratingRoutes);
+
+
 // 3. Route สำหรับทดสอบ
 app.get('/', (req, res) => {
     res.send('✅ Condovenient Backend is Running!');

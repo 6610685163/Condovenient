@@ -250,36 +250,8 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.build),
             label: 'Repair',
           ),
-          BottomNavigationBarItem(
-            icon: Stack(
-              children: [
-                const Icon(Icons.inventory_2),
-                if (_unreadCount > 0)
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: const BoxDecoration(
-                        color: Colors.redAccent,
-                        shape: BoxShape.circle,
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 14,
-                        minHeight: 14,
-                      ),
-                      child: Text(
-                        '$_unreadCount',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.inventory_2),
             label: 'Parcel',
           ),
           const BottomNavigationBarItem(
@@ -345,22 +317,60 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   Row(
                     children: [
-                      IconButton(
-                        onPressed: () {
-                          // ---------- แก้ไขตรงนี้ ----------
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const NotificationScreen(),
+                      // ---------- ปุ่มกระดิ่ง พร้อม badge ----------
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          IconButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      NotificationScreen(userId: widget.userId),
+                                ),
+                              ).then((_) => _fetchUnreadCount());
+                            },
+                            icon: const Icon(
+                              Icons.notifications_outlined,
+                              color: Colors.amber,
                             ),
-                          );
-                          // -------------------------------
-                        },
-                        icon: const Icon(
-                          Icons.notifications_outlined,
-                          color: Colors.amber,
-                        ),
+                          ),
+                          if (_unreadCount > 0)
+                            Positioned(
+                              right: 4,
+                              top: 4,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 5,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.redAccent,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: const Color(0xFF1E1E1E),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                constraints: const BoxConstraints(
+                                  minWidth: 18,
+                                  minHeight: 18,
+                                ),
+                                child: Text(
+                                  _unreadCount > 99 ? '99+' : '$_unreadCount',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
+                      // -------------------------------------------
                       IconButton(
                         onPressed: _handleLogout,
                         icon: const Icon(Icons.logout, color: Colors.grey),
