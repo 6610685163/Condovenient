@@ -79,6 +79,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
     if (!mounted) return;
 
     final ticketId = notif['ticketId'] as String?;
+    final isAlreadyRatedLocallyOrBackend = notif['isRated'] == true || _ratedTicketIds.contains(ticketId);
+    
     Map<String, dynamic>? ticket;
     if (ticketId != null) {
       try {
@@ -131,8 +133,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
               if ((ticket?['completionNote'] ?? '').toString().isNotEmpty)
                 _detailRow('บันทึกการซ่อม', ticket!['completionNote']),
               const SizedBox(height: 16),
+              
+              // ซ่อนปุ่มถ้าสถานะเป็น isRated == true จาก Backend แล้ว
               if (notif['requiresRating'] == true &&
-                  !_ratedTicketIds.contains(ticketId) &&
+                  !isAlreadyRatedLocallyOrBackend &&
                   (ticket?['ratingId'] == null))
                 SizedBox(
                   width: double.infinity,
@@ -270,11 +274,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                 'userId': widget.userId,
                                 'score': score,
                                 'comment': commentCtrl.text.trim(),
+                                'notificationId': notif['id'], // --- ส่ง ID แจ้งเตือนไปด้วย ---
                               }),
                             );
                             final data = jsonDecode(res.body);
                             if (res.statusCode == 201 && data['success'] == true) {
-                              _ratedTicketIds.add(ticketId);
+                              _ratedTicketIds.add(ticketId); // บันทึกใน Local กันเหนียว
                               if (notif['id'] != null) {
                                 await _markRead(notif['id']);
                               }
@@ -287,7 +292,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                   ),
                                 );
                               }
-                              _fetchNotifications();
+                              _fetchNotifications(); // รีเฟรชรายการให้ปุ่มหายไปทันที
                             } else {
                               setLocal(() {
                                 dialogError = data['message'] ?? data['error'] ?? 'ส่งคะแนนไม่สำเร็จ';
@@ -419,9 +424,11 @@ class _NotificationScreenState extends State<NotificationScreen> {
   Widget _buildNotificationItem(Map<String, dynamic> n) {
     final isRead = n['isRead'] == true;
     final type = (n['type'] ?? '').toString();
-    final needsRating = n['requiresRating'] == true
-        && !_ratedTicketIds.contains(n['ticketId']);
     final isRepairCompleted = type == 'repair_completed';
+    
+    // เช็คว่าเคยให้คะแนนหรือยัง (ตรวจสอบจากตัวแปร Local และ Flag จาก Backend)
+    final isAlreadyRated = n['isRated'] == true || _ratedTicketIds.contains(n['ticketId']);
+    final needsRating = n['requiresRating'] == true && !isAlreadyRated;
 
     return InkWell(
       onTap: () {
@@ -508,6 +515,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                             ),
                           ),
                         ),
+                        // ถ้า needsRating เป็นเท็จ (คือให้คะแนนแล้ว) ปุ่มนี้จะไม่โชว์
                         if (needsRating) ...[
                           const SizedBox(width: 8),
                           Expanded(

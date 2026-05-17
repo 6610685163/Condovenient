@@ -17,14 +17,30 @@ class _VisitorScreenState extends State<VisitorScreen> {
 
   final _nameController = TextEditingController();
   final _plateController = TextEditingController();
-  final _purposeController = TextEditingController();
+  final _roomController = TextEditingController(); // เพิ่ม Controller สำหรับห้องที่ติดต่อ
+  
   bool _isSubmitting = false;
+
+  // เพิ่มรายการตัวเลือกวัตถุประสงค์ (เหมือนในเว็บ)
+  String _selectedPurpose = 'Guest';
+  final List<String> _purposeOptions = [
+    'Guest',
+    'Delivery',
+    'Contractor',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    // ตั้งค่าเริ่มต้นห้องที่ติดต่อ ให้เป็นห้องของลูกบ้านคนนั้น
+    _roomController.text = widget.roomNumber;
+  }
 
   @override
   void dispose() {
     _nameController.dispose();
     _plateController.dispose();
-    _purposeController.dispose();
+    _roomController.dispose(); // เคลียร์ memory
     super.dispose();
   }
 
@@ -38,8 +54,8 @@ class _VisitorScreenState extends State<VisitorScreen> {
           body: jsonEncode({
             'visitorName': _nameController.text.trim(),
             'plateNumber': _plateController.text.trim().toUpperCase(),
-            'contactRoom': widget.roomNumber,
-            'purpose': _purposeController.text.trim(),
+            'contactRoom': _roomController.text.trim(), // ส่งค่าห้องที่กรอกในฟอร์ม
+            'purpose': _selectedPurpose, // ส่งค่า Dropdown ที่เลือก
             'addedBy': 'ลูกบ้านห้อง ${widget.roomNumber}',
           }),
         );
@@ -87,7 +103,11 @@ class _VisitorScreenState extends State<VisitorScreen> {
                           Navigator.pop(context);
                           _nameController.clear();
                           _plateController.clear();
-                          _purposeController.clear();
+                          // รีเซ็ตค่าห้องกลับเป็นของลูกบ้านเหมือนเดิม
+                          _roomController.text = widget.roomNumber;
+                          setState(() {
+                            _selectedPurpose = 'Guest';
+                          });
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.amber,
@@ -200,66 +220,76 @@ class _VisitorScreenState extends State<VisitorScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // --- ชื่อผู้มาติดต่อ ---
                   const Text(
                     'ชื่อผู้มาติดต่อ *',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: Colors.white,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _nameController,
                     style: const TextStyle(color: Colors.white),
-                    decoration: _buildInputDecoration(
-                      'เช่น สมชาย ดีเยี่ยม',
-                      Icons.person_outline,
-                    ),
-                    validator: (value) => value == null || value.isEmpty
-                        ? 'กรุณากรอกชื่อผู้มาติดต่อ'
-                        : null,
+                    decoration: _buildInputDecoration('เช่น สมชาย ดีเยี่ยม', Icons.person_outline),
+                    validator: (value) => value == null || value.isEmpty ? 'กรุณากรอกชื่อผู้มาติดต่อ' : null,
                   ),
                   const SizedBox(height: 20),
+
+                  // --- ทะเบียนรถ ---
                   const Text(
                     'ทะเบียนรถ *',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: Colors.white,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _plateController,
                     style: const TextStyle(color: Colors.white),
                     textCapitalization: TextCapitalization.characters,
-                    decoration: _buildInputDecoration(
-                      'เช่น กท 1234 (หากไม่มี ให้ระบุ "ไม่มี")',
-                      Icons.directions_car_outlined,
-                    ),
-                    validator: (value) => value == null || value.isEmpty
-                        ? 'กรุณากรอกทะเบียนรถ'
-                        : null,
+                    decoration: _buildInputDecoration('เช่น กท 1234 (หากไม่มี ให้ระบุ "ไม่มี")', Icons.directions_car_outlined),
+                    validator: (value) => value == null || value.isEmpty ? 'กรุณากรอกทะเบียนรถ' : null,
                   ),
                   const SizedBox(height: 20),
+
+                  // --- ห้องที่ติดต่อ ---
                   const Text(
-                    'วัตถุประสงค์',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: Colors.white,
-                    ),
+                    'ห้องที่ติดต่อ (Target Room) *',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
-                    controller: _purposeController,
+                    controller: _roomController,
                     style: const TextStyle(color: Colors.white),
-                    decoration: _buildInputDecoration(
-                      'เช่น ส่งของ, ซ่อมแซม, เพื่อน',
-                      Icons.edit_document,
-                    ),
+                    decoration: _buildInputDecoration('เช่น A-1201', Icons.meeting_room_outlined),
+                    validator: (value) => value == null || value.isEmpty ? 'กรุณากรอกห้องที่ติดต่อ' : null,
                   ),
+                  const SizedBox(height: 20),
+
+                  // --- วัตถุประสงค์ (Dropdown) ---
+                  const Text(
+                    'วัตถุประสงค์ (Purpose) *',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: _selectedPurpose,
+                    dropdownColor: const Color(0xFF1E1E1E), // สีพื้นหลังของเมนูตัวเลือก
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                    icon: const Icon(Icons.arrow_drop_down, color: Colors.amber),
+                    decoration: _buildInputDecoration('เลือกวัตถุประสงค์', Icons.assignment_outlined),
+                    items: _purposeOptions.map((String purpose) {
+                      return DropdownMenuItem<String>(
+                        value: purpose,
+                        child: Text(purpose),
+                      );
+                    }).toList(),
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        setState(() {
+                          _selectedPurpose = newValue;
+                        });
+                      }
+                    },
+                  ),
+                  
                   const SizedBox(height: 32),
                   SizedBox(
                     width: double.infinity,

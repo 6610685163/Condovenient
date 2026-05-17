@@ -3,7 +3,8 @@ const { db, admin } = require('../config/firebase');
 // --- 1. ลูกบ้านส่งคะแนน ---
 exports.submitRating = async (req, res) => {
     try {
-        const { ticketId, userId, score, comment } = req.body;
+        // เพิ่มการรับค่า notificationId จากฝั่ง Mobile
+        const { ticketId, userId, score, comment, notificationId } = req.body;
 
         if (!ticketId || score === undefined) {
             return res.status(400).json({
@@ -43,13 +44,27 @@ exports.submitRating = async (req, res) => {
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         };
 
+        // บันทึกคะแนนลง collection ratings
         const docRef = await db.collection('ratings').add(ratingData);
 
+        // อัปเดตตั๋วแจ้งซ่อมว่ามีคะแนนแล้ว
         await db.collection('repairTickets').doc(ticketId).update({
             ratingId: docRef.id,
             ratingScore: numericScore,
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
+
+        // --- โค้ดที่เพิ่มใหม่: อัปเดตสถานะ Notification ว่าให้คะแนนแล้ว ---
+        if (notificationId) {
+            try {
+                await db.collection('notifications').doc(notificationId).update({
+                    isRated: true,
+                    requiresRating: false // ปิดธงการบังคับให้คะแนนซ้ำ
+                });
+            } catch (notifErr) {
+                console.error('Error updating notification isRated:', notifErr.message);
+            }
+        }
 
         res.status(201).json({
             success: true,
