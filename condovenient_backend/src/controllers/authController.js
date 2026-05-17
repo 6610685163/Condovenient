@@ -307,19 +307,46 @@ exports.receiveNotification = async (req, res) => {
 exports.getNotifications = async (req, res) => {
     const { userId } = req.params;
 
-    try {
-        const snapshot = await db.collection('notifications')
-            .where('userId', '==', userId)
-            .orderBy('createdAt', 'desc')
-            .get();
+    const serialize = (doc) => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt && data.createdAt.toDate
+                ? data.createdAt.toDate().toISOString()
+                : data.createdAt || null,
+            readAt: data.readAt && data.readAt.toDate
+                ? data.readAt.toDate().toISOString()
+                : data.readAt || null,
+        };
+    };
 
-        const notifications = [];
-        snapshot.forEach(doc => notifications.push({ id: doc.id, ...doc.data() }));
+    try {
+        let notifications = [];
+
+        try {
+            const snapshot = await db.collection('notifications')
+                .where('userId', '==', userId)
+                .orderBy('createdAt', 'desc')
+                .get();
+            snapshot.forEach(doc => notifications.push(serialize(doc)));
+        } catch (indexErr) {
+            console.warn('Notifications index not ready, fallback:', indexErr.message);
+            const snapshot = await db.collection('notifications')
+                .where('userId', '==', userId)
+                .get();
+            snapshot.forEach(doc => notifications.push(serialize(doc)));
+            notifications.sort((a, b) => {
+                const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                return tB - tA;
+            });
+        }
 
         res.status(200).json({ success: true, notifications });
     } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ success: false, message: 'Server Error' });
+        console.error('getNotifications error:', err.message);
+        res.status(500).json({ success: false, message: 'Server Error: ' + err.message });
     }
 };
 
