@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react';
-import { X, Wrench, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Wrench, CheckCircle, Search, User as UserIcon } from 'lucide-react';
 
 const API = 'http://localhost:3000';
+
+// แสดงสีและข้อความของ workingStatus
+const WORKING_STATUS = {
+  online:  { label: 'ว่าง',         color: 'bg-green-100 text-green-700' },
+  working: { label: 'กำลังทำงาน',   color: 'bg-amber-100 text-amber-700' },
+  break:   { label: 'พักงาน',       color: 'bg-yellow-100 text-yellow-700' },
+  offline: { label: 'ออฟไลน์',      color: 'bg-gray-100 text-gray-500' },
+};
 
 const Repairs = () => {
   const [repairs, setRepairs]   = useState([]);
@@ -15,6 +23,13 @@ const Repairs = () => {
   const [error, setError]       = useState('');
   const [success, setSuccess]   = useState('');
 
+  // --- รายชื่อช่าง (สำหรับ dropdown ตอน assign) ---
+  const [technicians, setTechnicians] = useState([]);
+  const [loadingTechs, setLoadingTechs] = useState(false);
+  const [showTechList, setShowTechList] = useState(false);
+  const [onlyAvailable, setOnlyAvailable] = useState(true);
+  const [techSearch, setTechSearch] = useState('');
+
   const load = () => {
     setLoading(true); setError('');
     fetch(`${API}/api/repair/list`)
@@ -23,7 +38,41 @@ const Repairs = () => {
       .catch(() => { setError('ไม่สามารถโหลดข้อมูลได้'); setLoading(false); });
   };
 
+  // โหลดรายชื่อช่างจาก backend (role=technician)
+  const loadTechnicians = () => {
+    setLoadingTechs(true);
+    fetch(`${API}/api/staff?role=technician`)
+      .then(r => r.json())
+      .then(data => {
+        setTechnicians(Array.isArray(data.staff) ? data.staff : []);
+        setLoadingTechs(false);
+      })
+      .catch(() => { setLoadingTechs(false); });
+  };
+
   useEffect(() => { load(); }, []);
+
+  // เปิด modal มอบหมาย → โหลดช่าง
+  useEffect(() => {
+    if (selected) loadTechnicians();
+  }, [selected]);
+
+  const visibleTechs = technicians.filter(t => {
+    if (onlyAvailable && t.workingStatus !== 'online') return false;
+    if (techSearch.trim()) {
+      const q = techSearch.toLowerCase();
+      return (t.name || '').toLowerCase().includes(q)
+          || (t.username || '').toLowerCase().includes(q);
+    }
+    return true;
+  });
+
+  const pickTechnician = (t) => {
+    setTechName(t.name || t.username);
+    setTechId(t.id);
+    setShowTechList(false);
+    setError('');
+  };
 
   const handleAssign = async () => {
     if (!techName) { setError('กรุณาระบุชื่อช่าง'); return; }
@@ -64,11 +113,17 @@ const Repairs = () => {
   };
 
   const statusColor = {
-    pending:   'bg-yellow-100 text-yellow-700',
-    assigned:  'bg-blue-100 text-blue-700',
-    completed: 'bg-green-100 text-green-700',
+    pending:     'bg-yellow-100 text-yellow-700',
+    assigned:    'bg-blue-100 text-blue-700',
+    in_progress: 'bg-indigo-100 text-indigo-700',
+    completed:   'bg-green-100 text-green-700',
   };
-  const statusLabel = { pending: 'รอดำเนินการ', assigned: 'กำลังซ่อม', completed: 'เสร็จสิ้น' };
+  const statusLabel = {
+    pending: 'รอดำเนินการ',
+    assigned: 'รอช่างรับงาน',
+    in_progress: 'กำลังซ่อม',
+    completed: 'เสร็จสิ้น',
+  };
   const priorityLabel = { low: 'ต่ำ', normal: 'ปกติ', high: 'สูง' };
   const priorityColor = { high: 'bg-red-100 text-red-700', low: 'bg-blue-100 text-blue-700', normal: 'bg-gray-100 text-gray-700' };
 
@@ -137,8 +192,8 @@ const Repairs = () => {
                           <Wrench size={12} /> มอบหมาย
                         </button>
                       )}
-                      {/* ปุ่มปิดงาน (เฉพาะ assigned) */}
-                      {r.status === 'assigned' && (
+                      {/* ปุ่มปิดงาน (admin ปิดได้เมื่อช่างกำลังซ่อมหรือยังไม่ได้รับงาน) */}
+                      {(r.status === 'assigned' || r.status === 'in_progress') && (
                         <button onClick={() => handleClose(r.id)}
                           className="text-xs bg-green-100 hover:bg-green-200 text-green-700 px-2 py-1 rounded transition-colors flex items-center gap-1">
                           <CheckCircle size={12} /> ปิดงาน
@@ -228,7 +283,7 @@ const Repairs = () => {
                   <Wrench size={14} /> มอบหมายช่าง
                 </button>
               )}
-              {detailRepair.status === 'assigned' && (
+              {(detailRepair.status === 'assigned' || detailRepair.status === 'in_progress') && (
                 <button onClick={() => handleClose(detailRepair.id)}
                   className="flex items-center gap-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm">
                   <CheckCircle size={14} /> ปิดงานซ่อม
@@ -243,32 +298,98 @@ const Repairs = () => {
 
       {/* ── Modal มอบหมายช่าง ── */}
       {selected && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          onClick={() => setShowTechList(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4"
+            onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold text-gray-800">มอบหมายช่าง</h2>
-              <button onClick={() => { setSelected(null); setError(''); }}><X size={20} /></button>
+              <button onClick={() => { setSelected(null); setError(''); setShowTechList(false); setTechName(''); setTechId(''); }}>
+                <X size={20} />
+              </button>
             </div>
+
             {error && <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm">{error}</div>}
+
             <div className="bg-gray-50 rounded-xl p-3 space-y-1">
               <p className="text-sm text-gray-600">งาน: <span className="font-medium text-gray-800">{selected.title}</span></p>
               <p className="text-sm text-gray-600">ห้อง: <span className="font-medium">{selected.roomNumber}</span></p>
               <p className="text-sm text-gray-600">หมวดหมู่: <span className="font-medium">{selected.category}</span></p>
             </div>
-            <div>
-              <label className="text-xs text-gray-500 block mb-1">ชื่อช่าง *</label>
-              <input className="w-full border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="เช่น สมชาย" value={techName} onChange={e => setTechName(e.target.value)} />
+
+            {/* --- เลือกช่างจากรายการ --- */}
+            <div className="relative">
+              <label className="text-xs text-gray-500 block mb-1">เลือกช่าง *</label>
+              <button type="button"
+                onClick={() => setShowTechList(v => !v)}
+                className="w-full flex items-center justify-between border rounded-lg px-4 py-2 text-sm bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 outline-none">
+                {techName ? (
+                  <span className="flex items-center gap-2">
+                    <UserIcon size={14} className="text-blue-600" />
+                    <span className="font-medium text-gray-800">{techName}</span>
+                    {techId && <span className="text-xs text-gray-400">({techId.slice(0, 6)}...)</span>}
+                  </span>
+                ) : (
+                  <span className="text-gray-400">— เลือกช่างจากรายการ —</span>
+                )}
+                <Search size={14} className="text-gray-400" />
+              </button>
+
+              {showTechList && (
+                <div className="absolute left-0 right-0 mt-2 bg-white border rounded-xl shadow-lg z-10 max-h-80 overflow-hidden flex flex-col">
+                  <div className="p-2 border-b space-y-2">
+                    <input autoFocus placeholder="ค้นหาช่าง..."
+                      value={techSearch} onChange={e => setTechSearch(e.target.value)}
+                      className="w-full px-3 py-2 text-sm bg-gray-100 rounded-lg outline-none focus:bg-white focus:ring-2 focus:ring-blue-500" />
+                    <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+                      <input type="checkbox" checked={onlyAvailable}
+                        onChange={e => setOnlyAvailable(e.target.checked)} />
+                      แสดงเฉพาะช่างที่ว่าง (online)
+                    </label>
+                  </div>
+
+                  <div className="overflow-y-auto">
+                    {loadingTechs ? (
+                      <p className="text-center text-gray-400 py-6 text-sm">กำลังโหลดรายชื่อช่าง...</p>
+                    ) : visibleTechs.length === 0 ? (
+                      <p className="text-center text-gray-400 py-6 text-sm">
+                        {onlyAvailable ? 'ไม่มีช่างที่ว่างในขณะนี้' : 'ไม่พบช่างในระบบ'}
+                      </p>
+                    ) : (
+                      visibleTechs.map(t => {
+                        const ws = WORKING_STATUS[t.workingStatus] || WORKING_STATUS.offline;
+                        const isAvailable = t.workingStatus === 'online';
+                        return (
+                          <button key={t.id} type="button"
+                            onClick={() => pickTechnician(t)}
+                            className={`w-full flex items-center gap-3 px-4 py-3 text-left border-b last:border-b-0 transition-colors ${
+                              isAvailable ? 'hover:bg-blue-50' : 'hover:bg-gray-50'
+                            }`}>
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                              isAvailable ? 'bg-blue-100' : 'bg-gray-100'
+                            }`}>
+                              <UserIcon size={16} className={isAvailable ? 'text-blue-600' : 'text-gray-500'} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium text-gray-800 truncate">{t.name || t.username}</div>
+                              <div className="text-xs text-gray-400 truncate">{t.username}</div>
+                            </div>
+                            <span className={`text-xs px-2 py-1 rounded-full whitespace-nowrap ${ws.color}`}>
+                              {ws.label}
+                            </span>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
-            <div>
-              <label className="text-xs text-gray-500 block mb-1">รหัสช่าง (ไม่บังคับ)</label>
-              <input className="w-full border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="เช่น TECH-001" value={techId} onChange={e => setTechId(e.target.value)} />
-            </div>
+
             <div className="flex gap-2">
-              <button onClick={() => { setSelected(null); setError(''); }}
+              <button onClick={() => { setSelected(null); setError(''); setShowTechList(false); setTechName(''); setTechId(''); }}
                 className="flex-1 bg-gray-200 text-gray-800 py-2 rounded-lg hover:bg-gray-300 transition-colors">ยกเลิก</button>
-              <button onClick={handleAssign} disabled={saving || !techName}
+              <button onClick={handleAssign} disabled={saving || !techName || !techId}
                 className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
                 {saving ? 'กำลังบันทึก...' : 'ยืนยัน'}
               </button>
