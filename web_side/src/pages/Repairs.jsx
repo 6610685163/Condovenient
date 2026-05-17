@@ -3,7 +3,6 @@ import { X, Wrench, CheckCircle, Search, User as UserIcon } from 'lucide-react';
 
 const API = 'http://localhost:3000';
 
-// แสดงสีและข้อความของ workingStatus
 const WORKING_STATUS = {
   online:  { label: 'ว่าง',         color: 'bg-green-100 text-green-700' },
   working: { label: 'กำลังทำงาน',   color: 'bg-amber-100 text-amber-700' },
@@ -14,8 +13,8 @@ const WORKING_STATUS = {
 const Repairs = () => {
   const [repairs, setRepairs]   = useState([]);
   const [loading, setLoading]   = useState(true);
-  const [selected, setSelected] = useState(null);   // repair ที่จะ assign
-  const [detailRepair, setDetailRepair] = useState(null); // repair ที่จะดูรายละเอียด
+  const [selected, setSelected] = useState(null);
+  const [detailRepair, setDetailRepair] = useState(null);
   const [techName, setTechName] = useState('');
   const [techId, setTechId]     = useState('');
   const [saving, setSaving]     = useState(false);
@@ -23,7 +22,6 @@ const Repairs = () => {
   const [error, setError]       = useState('');
   const [success, setSuccess]   = useState('');
 
-  // --- รายชื่อช่าง (สำหรับ dropdown ตอน assign) ---
   const [technicians, setTechnicians] = useState([]);
   const [loadingTechs, setLoadingTechs] = useState(false);
   const [showTechList, setShowTechList] = useState(false);
@@ -38,7 +36,6 @@ const Repairs = () => {
       .catch(() => { setError('ไม่สามารถโหลดข้อมูลได้'); setLoading(false); });
   };
 
-  // โหลดรายชื่อช่างจาก backend (role=technician)
   const loadTechnicians = () => {
     setLoadingTechs(true);
     fetch(`${API}/api/staff?role=technician`)
@@ -51,11 +48,7 @@ const Repairs = () => {
   };
 
   useEffect(() => { load(); }, []);
-
-  // เปิด modal มอบหมาย → โหลดช่าง
-  useEffect(() => {
-    if (selected) loadTechnicians();
-  }, [selected]);
+  useEffect(() => { if (selected) loadTechnicians(); }, [selected]);
 
   const visibleTechs = technicians.filter(t => {
     if (onlyAvailable && t.workingStatus !== 'online') return false;
@@ -180,19 +173,16 @@ const Repairs = () => {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex gap-2">
-                      {/* ปุ่มดูรายละเอียด */}
                       <button onClick={() => setDetailRepair(r)}
                         className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded transition-colors">
                         รายละเอียด
                       </button>
-                      {/* ปุ่ม assign ช่าง (เฉพาะ pending) */}
                       {r.status === 'pending' && (
                         <button onClick={() => { setSelected(r); setError(''); }}
                           className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded transition-colors flex items-center gap-1">
                           <Wrench size={12} /> มอบหมาย
                         </button>
                       )}
-                      {/* ปุ่มปิดงาน (admin ปิดได้เมื่อช่างกำลังซ่อมหรือยังไม่ได้รับงาน) */}
                       {(r.status === 'assigned' || r.status === 'in_progress') && (
                         <button onClick={() => handleClose(r.id)}
                           className="text-xs bg-green-100 hover:bg-green-200 text-green-700 px-2 py-1 rounded transition-colors flex items-center gap-1">
@@ -208,7 +198,6 @@ const Repairs = () => {
         )}
       </div>
 
-      {/* ── Modal รายละเอียดใบแจ้งซ่อม ── */}
       {detailRepair && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
@@ -269,7 +258,6 @@ const Repairs = () => {
                   <p className="text-sm bg-green-50 px-3 py-2 rounded-lg text-green-700">{detailRepair.completionNote}</p>
                 </div>
               )}
-              {/* User ID */}
               <div>
                 <label className="text-xs text-gray-400 block mb-1">User ID ผู้แจ้ง</label>
                 <p className="text-xs font-mono bg-gray-50 px-3 py-2 rounded-lg text-gray-500 break-all">{detailRepair.userId || '-'}</p>
@@ -296,7 +284,6 @@ const Repairs = () => {
         </div>
       )}
 
-      {/* ── Modal มอบหมายช่าง ── */}
       {selected && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
           onClick={() => setShowTechList(false)}>
@@ -317,7 +304,6 @@ const Repairs = () => {
               <p className="text-sm text-gray-600">หมวดหมู่: <span className="font-medium">{selected.category}</span></p>
             </div>
 
-            {/* --- เลือกช่างจากรายการ --- */}
             <div className="relative">
               <label className="text-xs text-gray-500 block mb-1">เลือกช่าง *</label>
               <button type="button"
@@ -400,5 +386,5 @@ const Repairs = () => {
     </div>
   );
 };
-
+//gokjgjhiuoesjg
 export default Repairs;
