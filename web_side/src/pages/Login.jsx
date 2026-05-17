@@ -1,15 +1,19 @@
 import { useState } from 'react';
 import { Building2 } from 'lucide-react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { auth, googleProvider, facebookProvider } from '../firebase';
 import { signInWithPopup } from 'firebase/auth';
+
+const ROLE_HOME = {
+  admin: '/',
+  technician: '/technician',
+};
 
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // รับ error message จาก ProtectedRoute (กรณีถูกเตะออกเพราะไม่ใช่ admin)
   const routeError = location.state?.error || '';
 
   const [formData, setFormData] = useState({ username: '', password: '' });
@@ -22,12 +26,13 @@ const Login = () => {
   };
 
   const handleLoginSuccess = (user) => {
-    if (user.role !== 'admin') {
-      setError('คุณไม่มีสิทธิ์เข้าใช้งานระบบนี้ (เฉพาะ Admin เท่านั้น)');
+    const target = ROLE_HOME[user.role];
+    if (!target) {
+      setError('Role ของผู้ใช้นี้ยังไม่รองรับในระบบเว็บ');
       return;
     }
     localStorage.setItem('user_token', JSON.stringify(user));
-    navigate('/');
+    navigate(target, { replace: true });
   };
 
   const handleLogin = async (e) => {
@@ -68,7 +73,6 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex bg-white">
-      {/* ซ้าย - รูปภาพ */}
       <div className="hidden lg:flex w-1/2 bg-blue-600 items-center justify-center relative overflow-hidden">
         <div className="absolute w-[500px] h-[500px] bg-yellow-400 rounded-full blur-3xl opacity-50 mix-blend-multiply filter top-0 -left-20 animate-blob"></div>
         <div className="absolute w-[500px] h-[500px] bg-yellow-400 rounded-full blur-3xl opacity-50 mix-blend-multiply filter bottom-0 -right-20 animate-blob animation-delay-2000"></div>
@@ -81,7 +85,6 @@ const Login = () => {
         </div>
       </div>
 
-      {/* ขวา - ฟอร์ม */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md space-y-8">
           <div className="text-left">
@@ -89,11 +92,10 @@ const Login = () => {
               <div className="p-2 bg-blue-600 rounded-lg text-white"><Building2 size={24} /></div>
               <span className="text-xl font-bold">Condovenient</span>
             </div>
-            <h2 className="text-3xl font-bold text-gray-900">Admin Login</h2>
-            <p className="text-sm text-gray-500 mt-1">เฉพาะผู้ดูแลระบบเท่านั้น</p>
+            <h2 className="text-3xl font-bold text-gray-900">Sign In</h2>
+            <p className="text-sm text-gray-500 mt-1">Admin / ช่าง</p>
           </div>
 
-          {/* Error Banner */}
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
               <span>⚠️</span> {error}
