@@ -103,6 +103,7 @@ exports.closeRequest = async (req, res) => {
 
         // แจ้งเตือนเจ้าของห้องว่างานซ่อมเสร็จแล้ว + ขอให้กดให้คะแนน
         // ห่อด้วย try/catch แยก เพื่อให้การปิดงานยังถือว่าสำเร็จ แม้ notification หรือ FCM จะล้ม
+// ห่อ notification ด้วย try/catch แยก เพื่อให้ปิดงานยังสำเร็จแม้ FCM/notification ล้ม
         let notificationId = null;
         try {
             const notifRef = await db.collection('notifications').add({
@@ -124,7 +125,7 @@ exports.closeRequest = async (req, res) => {
             console.error('[closeRequest] Notification write failed:', notifErr.message);
         }
 
-        // ส่ง FCM push (best-effort) ให้ลูกบ้านเห็นแจ้งเตือนแบบ Real-time แม้แอปไม่ได้เปิด
+        // ส่ง FCM push (best-effort)
         try {
             const userDoc = await db.collection('users').doc(ticketData.userId).get();
             const fcmToken = userDoc.exists ? userDoc.data().fcmToken : null;
