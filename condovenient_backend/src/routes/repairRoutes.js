@@ -11,10 +11,4 @@ router.get('/list', repairController.getRepairList);
 // 3. ดูรายการแจ้งซ่อมรายคน
 router.get('/list/:userId', repairController.getRepairList);
 
-// 4. มอบหมายช่าง (ใช้ PATCH เพราะเป็นการอัปเดตข้อมูลบางส่วนของ Ticket)
-router.patch('/assign/:ticketId', repairController.assignTechnician);
-
-// 5. ปิดงานซ่อม (เมื่อช่างทำงานเสร็จสิ้น)
-router.patch('/close/:ticketId', repairController.closeRequest);
-
 module.exports = router;
