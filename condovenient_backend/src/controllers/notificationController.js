@@ -1,5 +1,7 @@
-const admin = require('../config/firebase');
-const db = admin.firestore();
+// const admin = require('../config/firebase');
+// const db = admin.firestore();
+
+const { db, admin } = require('../config/firebase');
 
 // --- ฟังก์ชัน: ส่ง In-app Notification ผ่าน FCM ---
 exports.sendAppNotification = async (req, res) => {
@@ -100,5 +102,66 @@ exports.notifySecurity = async (req, res) => {
         });
     } catch (error) {
         res.status(500).json({ error: 'Security alert failed: ' + error.message });
+    }
+};
+
+exports.getNotifications = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        let query = db.collection('notifications');
+
+        // ถ้าไม่ใช่ all ให้ดึงเฉพาะของคนนั้น
+        if (userId !== 'all') {
+            query = query.where('userId', '==', userId);
+        }
+
+        const snapshot = await query.orderBy('createdAt', 'desc').get();
+        const notifications = [];
+        snapshot.forEach(doc => notifications.push({ id: doc.id, ...doc.data() }));
+
+        res.status(200).json({ success: true, notifications });
+    } catch (error) {
+        // Fallback กรณี Index ยังไม่พร้อม
+        try {
+            const snapshot = await db.collection('notifications')
+                .where('userId', '==', req.params.userId)
+                .get();
+            const notifications = [];
+            snapshot.forEach(doc => notifications.push({ id: doc.id, ...doc.data() }));
+            notifications.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+            res.status(200).json({ success: true, notifications });
+        } catch (fallbackErr) {
+            res.status(500).json({ success: false, error: fallbackErr.message });
+        }
+    }
+};
+
+// --- เพิ่มใหม่: สร้างการแจ้งเตือนลง Database ---
+exports.createNotification = async (req, res) => {
+    try {
+        const { userId, title, message, type, priority } = req.body;
+        const docRef = await db.collection('notifications').add({
+            userId,
+            title,
+            message,
+            type: type || 'general',
+            priority: priority || 'Normal',
+            isRead: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        res.status(201).json({ success: true, message: 'ส่งแจ้งเตือนเรียบร้อย', notificationId: docRef.id });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+// --- เพิ่มใหม่: มาร์คว่าอ่านแล้ว ---
+exports.markAsRead = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await db.collection('notifications').doc(id).update({ isRead: true });
+        res.status(200).json({ success: true, message: 'ทำเครื่องหมายอ่านแล้ว' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
     }
 };

@@ -11,4 +11,8 @@ router.post('/send-sms', notificationController.sendSMS);
 // แจ้งเตือนเหตุการณ์ความไม่ปลอดภัย (Security Event)
 router.post('/notify-security', notificationController.notifySecurity);
 
+router.get('/:userId', notificationController.getNotifications);
+router.post('/', notificationController.createNotification);
+router.patch('/:id/read', notificationController.markAsRead);
+
 module.exports = router;
