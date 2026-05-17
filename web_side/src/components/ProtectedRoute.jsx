@@ -1,22 +1,33 @@
 import { Navigate } from 'react-router-dom';
 
-const ProtectedRoute = ({ children }) => {
-  const raw = localStorage.getItem('user_token');
+const ROLE_HOME = {
+  admin: '/',
+  technician: '/technician',
+};
 
+const ProtectedRoute = ({ children, allowedRoles }) => {
+  const raw = localStorage.getItem('user_token');
   if (!raw) {
     return <Navigate to="/login" replace />;
   }
 
+  let user;
   try {
-    const user = JSON.parse(raw);
-    if (user.role !== 'admin') {
-      // ล็อกอินแล้วแต่ไม่ใช่ admin → เตะออก กลับ login
-      localStorage.removeItem('user_token');
-      return <Navigate to="/login" replace state={{ error: 'คุณไม่มีสิทธิ์เข้าใช้งานระบบนี้' }} />;
-    }
+    user = JSON.parse(raw);
   } catch {
     localStorage.removeItem('user_token');
     return <Navigate to="/login" replace />;
+  }
+
+  if (!user?.role) {
+    localStorage.removeItem('user_token');
+    return <Navigate to="/login" replace />;
+  }
+
+  if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+    const home = ROLE_HOME[user.role];
+    if (home) return <Navigate to={home} replace />;
+    return <Navigate to="/login" replace state={{ error: 'คุณไม่มีสิทธิ์เข้าใช้งานหน้านี้' }} />;
   }
 
   return children;
