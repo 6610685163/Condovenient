@@ -58,7 +58,7 @@ exports.register = async (req, res) => {
         // 2. เช็คก่อนว่า Username นี้มีคนใช้ไปหรือยัง?
         const usersRef = db.collection('users');
         const snapshot = await usersRef.where('username', '==', username).get();
-        
+
         if (!snapshot.empty) {
             return res.status(400).json({ success: false, message: 'Username นี้มีผู้ใช้งานแล้ว' });
         }
@@ -109,8 +109,8 @@ exports.googleLogin = async (req, res) => {
         // 4. ถ้ายังไม่มี ให้สมัครสมาชิกให้อัตโนมัติ
         if (snapshot.empty) {
             // สร้าง Password มั่วๆ เพราะ User นี้เข้าผ่าน Google ไม่ต้องใช้ Password
-            const randomPassword = Math.random().toString(36).slice(-8); 
-            
+            const randomPassword = Math.random().toString(36).slice(-8);
+
             const newUser = {
                 username: email,
                 password: randomPassword,
@@ -213,7 +213,7 @@ exports.getAllUsers = async (req, res) => {
     try {
         const snapshot = await db.collection('users').get();
         let users = [];
-        
+
         // วนลูปอ่านข้อมูลทีละ Document แล้วเลือกเฉพาะ field ที่ต้องการ
         snapshot.forEach(doc => {
             const data = doc.data();
@@ -223,6 +223,7 @@ exports.getAllUsers = async (req, res) => {
                 name: data.name,
                 role: data.role,
                 password: data.password,
+                roomNumber: data.roomNumber || '',
                 createdAt: data.createdAt ? data.createdAt.toDate().toISOString() : null
             });
         });
@@ -249,7 +250,7 @@ exports.deleteUser = async (req, res) => {
         }
 
         const userData = doc.data();
-        
+
         // 2. สั่งลบข้อมูลใน Firestore
         await userRef.delete();
 

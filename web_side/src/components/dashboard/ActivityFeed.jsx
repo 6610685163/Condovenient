@@ -1,24 +1,31 @@
-import { Receipt, Wrench, UserPlus, Bell, Clock } from 'lucide-react';
+import { Wrench, UserPlus, Bell, Clock, Package, UserCheck } from 'lucide-react';
 
-const ActivityFeed = ({ repairs = [], loading }) => {
-    // นำข้อมูลใบแจ้งซ่อมจริงมาแปลงให้เข้ากับโครงสร้าง Timeline
-    const repairActivities = repairs.slice(0, 3).map((repair) => ({
-        icon: Wrench,
-        iconColor: 'text-amber-600 bg-amber-50 border-amber-100',
-        title: `Maintenance requested`,
-        detail: `${repair.title} - Room ${repair.roomNumber || 'N/A'}`,
-        time: 'Just now',
-    }));
+// ✅ เปลี่ยนจาก repairs เป็น activities
+const ActivityFeed = ({ activities = [], loading }) => {
 
-    // กิจกรรมจำลองอื่นๆ เพื่อให้หน้าตาเหมือนดีไซน์ที่สมบูรณ์
-    const mockActivities = [
-        { icon: Receipt, iconColor: 'text-slate-600 bg-slate-50 border-slate-100', title: 'Invoice paid', detail: 'Room A-1201', time: '2 min ago' },
-        { icon: UserPlus, iconColor: 'text-slate-600 bg-slate-50 border-slate-100', title: 'New resident registered', detail: 'Room C-1502', time: '1 hour ago' },
-        { icon: Bell, iconColor: 'text-slate-600 bg-slate-50 border-slate-100', title: 'Announcement sent', detail: 'Room All Units', time: '5 hours ago' },
-    ];
+    // ฟังก์ชันเลือกไอคอนและสีให้ตรงกับประเภทของข้อมูล
+    const getIconProps = (type) => {
+        switch (type) {
+            case 'repair': return { icon: Wrench, color: 'text-rose-500 bg-rose-50 border-rose-100' };
+            case 'parcel': return { icon: Package, color: 'text-amber-500 bg-amber-50 border-amber-100' };
+            case 'visitor': return { icon: UserCheck, color: 'text-emerald-500 bg-emerald-50 border-emerald-100' };
+            case 'user': return { icon: UserPlus, color: 'text-blue-500 bg-blue-50 border-blue-100' };
+            default: return { icon: Bell, color: 'text-slate-500 bg-slate-50 border-slate-100' };
+        }
+    };
 
-    // รวมกิจกรรมเข้าด้วยกัน (ถ้ากำลังโหลดให้ใช้ mock พลางๆก่อน)
-    const allActivities = loading ? mockActivities : [...repairActivities, ...mockActivities].slice(0, 6);
+    // ฟังก์ชันคำนวณเวลาที่ผ่านไป
+    const formatTimeAgo = (timestamp) => {
+        if (!timestamp) return 'Just now';
+        const seconds = Math.floor((new Date() - timestamp) / 1000);
+        if (seconds < 60) return 'Just now';
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return `${minutes} min ago`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours} hours ago`;
+        const days = Math.floor(hours / 24);
+        return `${days} days ago`;
+    };
 
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 h-full flex flex-col">
@@ -28,21 +35,25 @@ const ActivityFeed = ({ repairs = [], loading }) => {
             </div>
 
             <div className="flex-1 overflow-y-auto pr-1 space-y-6 relative before:absolute before:top-2 before:bottom-2 before:left-[18px] before:w-0.5 before:bg-slate-100">
-                {allActivities.map((act, index) => {
-                    const Icon = act.icon;
+                {loading ? (
+                    <div className="text-center text-slate-400 py-10 text-xs font-medium">Loading activities...</div>
+                ) : activities.length === 0 ? (
+                    <div className="text-center text-slate-400 py-10 text-xs font-medium italic">No recent activity.</div>
+                ) : activities.map((act) => {
+                    const { icon: Icon, color } = getIconProps(act.type);
                     return (
-                        <div key={index} className="flex items-start gap-4 relative z-10 group">
-                            <div className={`p-2 rounded-full border transition-all group-hover:scale-110 ${act.iconColor}`}>
+                        <div key={act.id} className="flex items-start gap-4 relative z-10 group">
+                            <div className={`p-2 rounded-full border transition-all group-hover:scale-110 ${color}`}>
                                 <Icon size={16} />
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex justify-between items-start gap-2">
                                     <h3 className="text-sm font-semibold text-slate-700 truncate">{act.title}</h3>
                                     <span className="text-xs text-slate-400 whitespace-nowrap flex items-center gap-1">
-                                        <Clock size={12} /> {act.time}
+                                        <Clock size={12} /> {formatTimeAgo(act.time)}
                                     </span>
                                 </div>
-                                <p className="text-xs text-slate-500 mt-0.5">{act.detail}</p>
+                                <p className="text-xs text-slate-500 mt-0.5">{act.desc}</p>
                             </div>
                         </div>
                     );
