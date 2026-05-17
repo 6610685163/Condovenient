@@ -1,9 +1,12 @@
-import { LayoutDashboard, Wrench, LogOut } from 'lucide-react';
+import { LayoutDashboard, Wrench, Activity, Star, LogOut } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 const TechSidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
+
+  let user = null;
+  try { user = JSON.parse(localStorage.getItem('user_token') || 'null'); } catch {}
 
   const handleLogout = () => {
     localStorage.removeItem('user_token');
@@ -11,8 +14,10 @@ const TechSidebar = () => {
   };
 
   const menuItems = [
-    { icon: LayoutDashboard, text: 'Dashboard',  path: '/technician' },
-    { icon: Wrench,          text: 'งานของฉัน', path: '/technician/jobs' },
+    { icon: LayoutDashboard, text: 'Dashboard',       path: '/technician' },
+    { icon: Wrench,          text: 'งานของฉัน',      path: '/technician/jobs' },
+    { icon: Activity,        text: 'สถานะการทำงาน',  path: '/technician/status' },
+    { icon: Star,            text: 'Feedback',        path: '/technician/feedback' },
   ];
 
   return (
@@ -27,9 +32,17 @@ const TechSidebar = () => {
         </div>
       </div>
 
+      {user && (
+        <div className="px-6 py-3 border-b border-gray-100 text-sm">
+          <div className="text-gray-500">Logged in as</div>
+          <div className="font-semibold text-gray-800">{user.name || user.username}</div>
+        </div>
+      )}
+
       <nav className="flex-1 p-4 space-y-1">
         {menuItems.map((item, index) => {
-          const isActive = location.pathname === item.path;
+          const isActive = location.pathname === item.path
+            || (item.path !== '/technician' && location.pathname.startsWith(item.path));
           return (
             <Link
               key={index}
