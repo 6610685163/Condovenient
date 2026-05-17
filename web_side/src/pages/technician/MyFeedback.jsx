@@ -8,10 +8,10 @@ const getUser = () => {
 };
 
 const Stars = ({ score }) => (
-  <div className="flex">
+  <div className="flex gap-0.5">
     {[1, 2, 3, 4, 5].map(n => (
       <Star key={n} size={16}
-        className={n <= score ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'} />
+        className={n <= score ? 'text-amber-400 fill-amber-400' : 'text-slate-200'} />
     ))}
   </div>
 );
@@ -43,58 +43,70 @@ const MyFeedback = () => {
   const max = Math.max(1, ...distribution.map(d => d.count));
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold text-gray-800 mb-1">Feedback ของฉัน</h1>
-      <p className="text-gray-500 text-sm mb-6">คะแนนและความคิดเห็นจากลูกบ้าน</p>
+    <div className="space-y-6 pb-8 font-sans">
+      <div>
+        <h1 className="text-3xl font-serif font-bold text-slate-800 mb-1">My Feedback</h1>
+        <p className="text-sm text-slate-500 mb-6">คะแนนและความคิดเห็นจากลูกบ้าน</p>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
-          <div className="text-5xl font-bold text-yellow-500">{average || '-'}</div>
-          <div className="flex justify-center mt-2"><Stars score={Math.round(average)} /></div>
-          <div className="text-sm text-gray-500 mt-2">คะแนนเฉลี่ย</div>
+        {/* กล่องคะแนนเฉลี่ย */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 text-center flex flex-col items-center justify-center">
+          <div className="text-5xl font-serif font-bold text-amber-500">{average || '-'}</div>
+          <div className="flex justify-center mt-3 mb-2"><Stars score={Math.round(average)} /></div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">Average Rating</div>
         </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center flex flex-col justify-center">
-          <div className="text-5xl font-bold text-gray-800">{count}</div>
-          <div className="text-sm text-gray-500 mt-2">รีวิวทั้งหมด</div>
+        
+        {/* กล่องจำนวนรีวิว */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 text-center flex flex-col justify-center">
+          <div className="text-5xl font-serif font-bold text-slate-800">{count}</div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 mt-3">Total Reviews</div>
         </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <div className="text-sm text-gray-500 mb-2">การกระจายคะแนน</div>
-          {distribution.map(d => (
-            <div key={d.score} className="flex items-center gap-2 mb-1">
-              <span className="text-xs w-3">{d.score}</span>
-              <Star size={12} className="text-yellow-400 fill-yellow-400" />
-              <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
-                <div className="bg-yellow-400 h-full" style={{ width: `${(d.count / max) * 100}%` }} />
+
+        {/* กล่องการกระจายคะแนน */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-center">
+          <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-4">Rating Distribution</div>
+          <div className="space-y-2.5">
+            {distribution.map(d => (
+              <div key={d.score} className="flex items-center gap-3">
+                <div className="flex items-center gap-1 w-8">
+                  <span className="text-sm font-bold text-slate-600">{d.score}</span>
+                  <Star size={12} className="text-amber-400 fill-amber-400" />
+                </div>
+                <div className="flex-1 bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                  <div className="bg-amber-400 h-full rounded-full" style={{ width: `${(d.count / max) * 100}%` }} />
+                </div>
+                <span className="text-sm font-medium text-slate-500 w-6 text-right">{d.count}</span>
               </div>
-              <span className="text-xs text-gray-500 w-6 text-right">{d.count}</span>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">รีวิวจากลูกบ้าน</h2>
+      {/* รายการรีวิว */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+        <h2 className="text-lg font-bold text-slate-800 mb-4">รีวิวล่าสุด</h2>
         {loading ? (
-          <div className="text-gray-400 text-sm py-6 text-center">กำลังโหลด...</div>
+          <div className="text-slate-400 text-sm py-8 text-center">กำลังโหลดข้อมูล...</div>
         ) : ratings.length === 0 ? (
-          <div className="text-gray-400 text-sm py-6 text-center">ยังไม่มีรีวิว</div>
+          <div className="text-slate-400 text-sm py-8 text-center bg-slate-50 rounded-xl">ยังไม่มีรีวิวจากลูกบ้าน</div>
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-slate-100">
             {ratings.map(r => (
-              <li key={r.id} className="py-4">
-                <div className="flex items-center gap-2 mb-1">
+              <li key={r.id} className="py-5 first:pt-2 last:pb-2">
+                <div className="flex items-center gap-3 mb-2">
                   <Stars score={r.score} />
-                  <span className="text-xs text-gray-500">
-                    {r.createdAt ? new Date(r.createdAt).toLocaleString('th-TH') : ''}
+                  <span className="text-xs font-medium text-slate-400">
+                    {r.createdAt ? new Date(r.createdAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' }) : ''}
                   </span>
                 </div>
                 {r.comment ? (
-                  <div className="flex items-start gap-2 text-gray-700">
-                    <MessageSquare size={14} className="text-gray-400 mt-1" />
-                    <span className="text-sm">{r.comment}</span>
+                  <div className="flex items-start gap-2.5 text-slate-700 bg-slate-50 p-4 rounded-xl">
+                    <MessageSquare size={16} className="text-slate-400 mt-0.5 shrink-0" />
+                    <span className="text-sm leading-relaxed">{r.comment}</span>
                   </div>
                 ) : (
-                  <span className="text-xs text-gray-400">— ไม่มีคอมเมนต์ —</span>
+                  <span className="text-sm text-slate-400 italic px-2">— ไม่มีคอมเมนต์ —</span>
                 )}
               </li>
             ))}

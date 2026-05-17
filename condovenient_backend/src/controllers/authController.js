@@ -58,7 +58,7 @@ exports.register = async (req, res) => {
         // 2. เช็คก่อนว่า Username นี้มีคนใช้ไปหรือยัง?
         const usersRef = db.collection('users');
         const snapshot = await usersRef.where('username', '==', username).get();
-
+        
         if (!snapshot.empty) {
             return res.status(400).json({ success: false, message: 'Username นี้มีผู้ใช้งานแล้ว' });
         }
@@ -109,7 +109,7 @@ exports.googleLogin = async (req, res) => {
         // 4. ถ้ายังไม่มี ให้สมัครสมาชิกให้อัตโนมัติ
         if (snapshot.empty) {
             // สร้าง Password มั่วๆ เพราะ User นี้เข้าผ่าน Google ไม่ต้องใช้ Password
-            const randomPassword = Math.random().toString(36).slice(-8);
+            const randomPassword = Math.random().toString(36).slice(-8); 
             
             const newUser = {
                 username: email,
@@ -157,7 +157,6 @@ exports.googleLogin = async (req, res) => {
 
 exports.facebookLogin = async (req, res) => {
     const { token } = req.body;
-
     try {
         const decodedToken = await admin.auth().verifyIdToken(token);
         const { email, uid, name } = decodedToken;
@@ -214,7 +213,7 @@ exports.getAllUsers = async (req, res) => {
     try {
         const snapshot = await db.collection('users').get();
         let users = [];
-
+        
         // วนลูปอ่านข้อมูลทีละ Document แล้วเลือกเฉพาะ field ที่ต้องการ
         snapshot.forEach(doc => {
             const data = doc.data();
@@ -230,7 +229,6 @@ exports.getAllUsers = async (req, res) => {
 
         // ส่งข้อมูลกลับไปเป็น JSON array
         res.json(users);
-
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ success: false, message: 'Server Error' });
@@ -251,7 +249,7 @@ exports.deleteUser = async (req, res) => {
         }
 
         const userData = doc.data();
-
+        
         // 2. สั่งลบข้อมูลใน Firestore
         await userRef.delete();
 
@@ -298,6 +296,7 @@ exports.receiveNotification = async (req, res) => {
             message: 'ส่งการแจ้งเตือนสำเร็จ',
             notificationId: docRef.id
         });
+
     } catch (err) {
         console.error('Notification Error:', err.message);
         res.status(500).json({ success: false, message: 'Server Error' });
@@ -307,23 +306,24 @@ exports.receiveNotification = async (req, res) => {
 // --- ฟังก์ชันใหม่: ดึง Notification ของ User ---
 exports.getNotifications = async (req, res) => {
     const { userId } = req.params;
-    
+
     const serialize = (doc) => {
         const data = doc.data();
         return {
             id: doc.id,
             ...data,
-            createdAt: data.createdAt && data.createdAt.toDate 
-                ? data.createdAt.toDate().toISOString() 
+            createdAt: data.createdAt && data.createdAt.toDate
+                ? data.createdAt.toDate().toISOString()
                 : data.createdAt || null,
-            readAt: data.readAt && data.readAt.toDate 
-                ? data.readAt.toDate().toISOString() 
+            readAt: data.readAt && data.readAt.toDate
+                ? data.readAt.toDate().toISOString()
                 : data.readAt || null,
         };
     };
 
     try {
         let notifications = [];
+
         try {
             const snapshot = await db.collection('notifications')
                 .where('userId', '==', userId)
@@ -342,6 +342,7 @@ exports.getNotifications = async (req, res) => {
                 return tB - tA;
             });
         }
+
         res.status(200).json({ success: true, notifications });
     } catch (err) {
         console.error('getNotifications error:', err.message);
