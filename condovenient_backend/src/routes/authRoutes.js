@@ -10,8 +10,8 @@ router.get('/users', authController.getAllUsers);
 router.delete('/users/:id', authController.deleteUser);
 
 // --- Routes สำหรับ Notification Service ---
-router.post('/notifications', authController.receiveNotification);
-router.get('/notifications/:userId', authController.getNotifications);
-router.patch('/notifications/:notificationId/read', authController.markNotificationRead);
+// router.post('/notifications', authController.receiveNotification);
+// router.get('/notifications/:userId', authController.getNotifications);
+// router.patch('/notifications/:notificationId/read', authController.markNotificationRead);
 
 module.exports = router;

@@ -10,6 +10,7 @@ import Notifications from './pages/Notifications';
 import Parcels from './pages/Parcels';
 import Visitors from './pages/Visitors';
 import ProtectedRoute from './components/ProtectedRoute';
+import Settings from './pages/Settings';
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
           <Route path="notifications" element={<Notifications />} />
           <Route path="parcels" element={<Parcels />} />
           <Route path="visitors" element={<Visitors />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
 
         {/* กลุ่ม 2: หน้าที่ไม่ต้องมี Sidebar */}

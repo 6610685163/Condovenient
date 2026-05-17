@@ -58,7 +58,7 @@ exports.register = async (req, res) => {
         // 2. เช็คก่อนว่า Username นี้มีคนใช้ไปหรือยัง?
         const usersRef = db.collection('users');
         const snapshot = await usersRef.where('username', '==', username).get();
-        
+
         if (!snapshot.empty) {
             return res.status(400).json({ success: false, message: 'Username นี้มีผู้ใช้งานแล้ว' });
         }
@@ -109,8 +109,8 @@ exports.googleLogin = async (req, res) => {
         // 4. ถ้ายังไม่มี ให้สมัครสมาชิกให้อัตโนมัติ
         if (snapshot.empty) {
             // สร้าง Password มั่วๆ เพราะ User นี้เข้าผ่าน Google ไม่ต้องใช้ Password
-            const randomPassword = Math.random().toString(36).slice(-8); 
-            
+            const randomPassword = Math.random().toString(36).slice(-8);
+
             const newUser = {
                 username: email,
                 password: randomPassword,
@@ -213,7 +213,7 @@ exports.getAllUsers = async (req, res) => {
     try {
         const snapshot = await db.collection('users').get();
         let users = [];
-        
+
         // วนลูปอ่านข้อมูลทีละ Document แล้วเลือกเฉพาะ field ที่ต้องการ
         snapshot.forEach(doc => {
             const data = doc.data();
@@ -249,7 +249,7 @@ exports.deleteUser = async (req, res) => {
         }
 
         const userData = doc.data();
-        
+
         // 2. สั่งลบข้อมูลใน Firestore
         await userRef.delete();
 
@@ -265,77 +265,77 @@ exports.deleteUser = async (req, res) => {
     }
 };
 
-// --- ฟังก์ชันใหม่: ส่ง Notification ให้ User ---
-exports.receiveNotification = async (req, res) => {
-    // รับค่า userId และข้อความแจ้งเตือนจาก body
-    const { userId, title, message, type } = req.body;
+// // --- ฟังก์ชันใหม่: ส่ง Notification ให้ User ---
+// exports.receiveNotification = async (req, res) => {
+//     // รับค่า userId และข้อความแจ้งเตือนจาก body
+//     const { userId, title, message, type } = req.body;
 
-    try {
-        // ตรวจสอบว่า userId มีอยู่จริง
-        const userRef = db.collection('users').doc(userId);
-        const userDoc = await userRef.get();
+//     try {
+//         // ตรวจสอบว่า userId มีอยู่จริง
+//         const userRef = db.collection('users').doc(userId);
+//         const userDoc = await userRef.get();
 
-        if (!userDoc.exists) {
-            return res.status(404).json({ success: false, message: 'ไม่พบผู้ใช้งานนี้' });
-        }
+//         if (!userDoc.exists) {
+//             return res.status(404).json({ success: false, message: 'ไม่พบผู้ใช้งานนี้' });
+//         }
 
-        // บันทึก Notification ลง Firestore ใน collection 'notifications'
-        const notification = {
-            userId: userId,
-            title: title || 'แจ้งเตือนจากระบบ',
-            message: message || '',
-            type: type || 'general',   // เช่น 'payment', 'repair', 'general'
-            isRead: false,              // ยังไม่ได้อ่าน
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
-        };
+//         // บันทึก Notification ลง Firestore ใน collection 'notifications'
+//         const notification = {
+//             userId: userId,
+//             title: title || 'แจ้งเตือนจากระบบ',
+//             message: message || '',
+//             type: type || 'general',   // เช่น 'payment', 'repair', 'general'
+//             isRead: false,              // ยังไม่ได้อ่าน
+//             createdAt: admin.firestore.FieldValue.serverTimestamp()
+//         };
 
-        const docRef = await db.collection('notifications').add(notification);
+//         const docRef = await db.collection('notifications').add(notification);
 
-        res.status(201).json({
-            success: true,
-            message: 'ส่งการแจ้งเตือนสำเร็จ',
-            notificationId: docRef.id
-        });
+//         res.status(201).json({
+//             success: true,
+//             message: 'ส่งการแจ้งเตือนสำเร็จ',
+//             notificationId: docRef.id
+//         });
 
-    } catch (err) {
-        console.error('Notification Error:', err.message);
-        res.status(500).json({ success: false, message: 'Server Error' });
-    }
-};
+//     } catch (err) {
+//         console.error('Notification Error:', err.message);
+//         res.status(500).json({ success: false, message: 'Server Error' });
+//     }
+// };
 
-// --- ฟังก์ชันใหม่: ดึง Notification ของ User ---
-exports.getNotifications = async (req, res) => {
-    const { userId } = req.params;
+// // --- ฟังก์ชันใหม่: ดึง Notification ของ User ---
+// exports.getNotifications = async (req, res) => {
+//     const { userId } = req.params;
 
-    try {
-        const snapshot = await db.collection('notifications')
-            .where('userId', '==', userId)
-            .orderBy('createdAt', 'desc')
-            .get();
+//     try {
+//         const snapshot = await db.collection('notifications')
+//             .where('userId', '==', userId)
+//             .orderBy('createdAt', 'desc')
+//             .get();
 
-        const notifications = [];
-        snapshot.forEach(doc => notifications.push({ id: doc.id, ...doc.data() }));
+//         const notifications = [];
+//         snapshot.forEach(doc => notifications.push({ id: doc.id, ...doc.data() }));
 
-        res.status(200).json({ success: true, notifications });
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ success: false, message: 'Server Error' });
-    }
-};
+//         res.status(200).json({ success: true, notifications });
+//     } catch (err) {
+//         console.error(err.message);
+//         res.status(500).json({ success: false, message: 'Server Error' });
+//     }
+// };
 
-// --- ฟังก์ชันใหม่: มาร์ค Notification ว่าอ่านแล้ว ---
-exports.markNotificationRead = async (req, res) => {
-    const { notificationId } = req.params;
+// // --- ฟังก์ชันใหม่: มาร์ค Notification ว่าอ่านแล้ว ---
+// exports.markNotificationRead = async (req, res) => {
+//     const { notificationId } = req.params;
 
-    try {
-        await db.collection('notifications').doc(notificationId).update({
-            isRead: true,
-            readAt: admin.firestore.FieldValue.serverTimestamp()
-        });
+//     try {
+//         await db.collection('notifications').doc(notificationId).update({
+//             isRead: true,
+//             readAt: admin.firestore.FieldValue.serverTimestamp()
+//         });
 
-        res.status(200).json({ success: true, message: 'อัปเดตสถานะการอ่านแล้ว' });
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ success: false, message: 'Server Error' });
-    }
-};
+//         res.status(200).json({ success: true, message: 'อัปเดตสถานะการอ่านแล้ว' });
+//     } catch (err) {
+//         console.error(err.message);
+//         res.status(500).json({ success: false, message: 'Server Error' });
+//     }
+// };
