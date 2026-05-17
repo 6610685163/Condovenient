@@ -19,6 +19,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
   String _error = '';
   Timer? _pollTimer;
 
+  final Set<String> _ratedTicketIds = {};
+
   @override
   void initState() {
     super.initState();
@@ -34,10 +36,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
   Future<void> _fetchNotifications() async {
     if (widget.userId.isEmpty) {
-      setState(() {
-        _loading = false;
-        _error = 'ไม่พบ User ID';
-      });
+      setState(() { _loading = false; _error = 'ไม่พบ User ID'; });
       return;
     }
     try {
@@ -48,11 +47,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
         final data = jsonDecode(response.body);
         if (data['success'] == true && mounted) {
           final list = List<Map<String, dynamic>>.from(data['notifications'] ?? []);
-          setState(() {
-            _notifications = list;
-            _loading = false;
-            _error = '';
-          });
+          setState(() { _notifications = list; _loading = false; _error = ''; });
         }
       } else {
         if (mounted) setState(() { _loading = false; _error = 'โหลดแจ้งเตือนไม่สำเร็จ'; });
@@ -75,6 +70,259 @@ class _NotificationScreenState extends State<NotificationScreen> {
       }
     }
     _fetchNotifications();
+  }
+
+  Future<void> _showRepairDetail(Map<String, dynamic> notif) async {
+    if (notif['isRead'] == false && notif['id'] != null) {
+      await _markRead(notif['id']);
+    }
+    if (!mounted) return;
+
+    final ticketId = notif['ticketId'] as String?;
+    Map<String, dynamic>? ticket;
+    if (ticketId != null) {
+      try {
+        final res = await http
+            .get(Uri.parse('$_backendUrl/api/repair/list/${widget.userId}'))
+            .timeout(const Duration(seconds: 8));
+        if (res.statusCode == 200) {
+          final list = List<Map<String, dynamic>>.from(jsonDecode(res.body));
+          ticket = list.firstWhere(
+            (t) => t['id'] == ticketId,
+            orElse: () => <String, dynamic>{},
+          );
+          if (ticket.isEmpty) ticket = null;
+        }
+      } catch (_) {}
+    }
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.build_circle, color: Colors.amber, size: 28),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text('รายละเอียดงานซ่อม',
+                      style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.grey),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const Divider(color: Color(0xFF2A2A2A)),
+              _detailRow('หัวข้อ', ticket?['title'] ?? notif['ticketTitle'] ?? '-'),
+              _detailRow('หมวดหมู่', ticket?['category'] ?? '-'),
+              _detailRow('ห้อง', ticket?['roomNumber'] ?? '-'),
+              _detailRow('ช่างที่ดูแล', notif['technicianName'] ?? ticket?['technicianName'] ?? '-'),
+              _detailRow('สถานะ', ticket?['status'] ?? 'completed'),
+              if ((ticket?['completionNote'] ?? '').toString().isNotEmpty)
+                _detailRow('บันทึกการซ่อม', ticket!['completionNote']),
+              const SizedBox(height: 16),
+              if (notif['requiresRating'] == true &&
+                  !_ratedTicketIds.contains(ticketId) &&
+                  (ticket?['ratingId'] == null))
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _openRatingDialog(notif);
+                    },
+                    icon: const Icon(Icons.star),
+                    label: const Text('ให้คะแนนช่าง'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, dynamic value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+          ),
+          Expanded(
+            child: Text(
+              value?.toString() ?? '-',
+              style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openRatingDialog(Map<String, dynamic> notif) async {
+    final ticketId = notif['ticketId'] as String?;
+    if (ticketId == null) return;
+
+    int score = 5;
+    final commentCtrl = TextEditingController();
+    bool submitting = false;
+    String dialogError = '';
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setLocal) {
+        return Dialog(
+          backgroundColor: const Color(0xFF1E1E1E),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.star_rounded, color: Colors.amber, size: 56),
+                const SizedBox(height: 8),
+                const Text('ให้คะแนนช่าง',
+                  style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text(notif['technicianName']?.toString() ?? 'ช่าง',
+                  style: const TextStyle(color: Colors.grey, fontSize: 14)),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(5, (i) {
+                    final filled = i < score;
+                    return IconButton(
+                      iconSize: 40,
+                      onPressed: () => setLocal(() => score = i + 1),
+                      icon: Icon(
+                        filled ? Icons.star_rounded : Icons.star_outline_rounded,
+                        color: filled ? Colors.amber : Colors.grey,
+                      ),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: commentCtrl,
+                  maxLines: 3,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'แสดงความคิดเห็น (ไม่บังคับ)',
+                    hintStyle: const TextStyle(color: Colors.grey),
+                    filled: true,
+                    fillColor: const Color(0xFF2A2A2A),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                if (dialogError.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(dialogError, style: const TextStyle(color: Colors.red, fontSize: 13)),
+                ],
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: submitting ? null : () => Navigator.pop(ctx),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.grey),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('ภายหลัง', style: TextStyle(color: Colors.grey)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: submitting ? null : () async {
+                          setLocal(() { submitting = true; dialogError = ''; });
+                          try {
+                            final res = await http.post(
+                              Uri.parse('$_backendUrl/api/ratings'),
+                              headers: {'Content-Type': 'application/json'},
+                              body: jsonEncode({
+                                'ticketId': ticketId,
+                                'userId': widget.userId,
+                                'score': score,
+                                'comment': commentCtrl.text.trim(),
+                              }),
+                            );
+                            final data = jsonDecode(res.body);
+                            if (res.statusCode == 201 && data['success'] == true) {
+                              _ratedTicketIds.add(ticketId);
+                              if (notif['id'] != null) {
+                                await _markRead(notif['id']);
+                              }
+                              if (mounted) Navigator.pop(ctx);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('ขอบคุณสำหรับ feedback!'),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              }
+                              _fetchNotifications();
+                            } else {
+                              setLocal(() {
+                                dialogError = data['message'] ?? data['error'] ?? 'ส่งคะแนนไม่สำเร็จ';
+                                submitting = false;
+                              });
+                            }
+                          } catch (e) {
+                            setLocal(() {
+                              dialogError = 'เชื่อมต่อ Server ไม่สำเร็จ';
+                              submitting = false;
+                            });
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.amber,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: submitting
+                            ? const SizedBox(
+                                width: 18, height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                              )
+                            : const Text('ส่งคะแนน', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      }),
+    );
   }
 
   IconData _iconFor(Map<String, dynamic> n) {
@@ -170,10 +418,16 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
   Widget _buildNotificationItem(Map<String, dynamic> n) {
     final isRead = n['isRead'] == true;
+    final type = (n['type'] ?? '').toString();
+    final needsRating = n['requiresRating'] == true
+        && !_ratedTicketIds.contains(n['ticketId']);
+    final isRepairCompleted = type == 'repair_completed';
 
     return InkWell(
       onTap: () {
-        if (!isRead && n['id'] != null) {
+        if (isRepairCompleted) {
+          _showRepairDetail(n);
+        } else if (!isRead && n['id'] != null) {
           _markRead(n['id']).then((_) => _fetchNotifications());
         }
       },
@@ -235,6 +489,46 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     _formatTime(n['createdAt']),
                     style: TextStyle(color: Colors.grey[600], fontSize: 11),
                   ),
+                  if (isRepairCompleted) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _showRepairDetail(n),
+                            icon: const Icon(Icons.info_outline, size: 16),
+                            label: const Text('ดูรายละเอียด'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.amber,
+                              side: const BorderSide(color: Colors.amber),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (needsRating) ...[
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () => _openRatingDialog(n),
+                              icon: const Icon(Icons.star, size: 16),
+                              label: const Text('ให้คะแนน'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.amber,
+                                foregroundColor: Colors.black,
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
