@@ -69,23 +69,6 @@
 * **Smart Pickup**
   รับพัสดุผ่าน QR Code ด้วย Smart Locker หรือเจ้าหน้าที่ ลดความผิดพลาดในการรับของ
 
----
-
-### 4. AI Security & Visitor Management
-
-ระบบความปลอดภัยและการจัดการผู้มาติดต่อ
-
-* **Visitor Pre-registration**
-  ลูกบ้านสามารถลงทะเบียนแขกและทะเบียนรถล่วงหน้าผ่านแอป
-
-* **AI License Plate Recognition (LPR)**
-  กล้อง AI ตรวจจับป้ายทะเบียนและเปิดไม้กั้นอัตโนมัติ
-
-* **AI Intrusion Detection**
-  ตรวจจับความเคลื่อนไหวในพื้นที่เสี่ยงและแจ้งเตือน รปภ. แบบทันที
-
-* **Emergency Announcement**
-  ผู้จัดการนิติบุคคลสามารถส่งประกาศด่วนผ่าน Notification และ SMS ไปยังลูกบ้านทั้งหมด
 
 ---
 
@@ -101,13 +84,6 @@
 | Database       | PostgreSQL |
 | Cloud Services | Firebase   |
 
-### AI & Smart Security
-
-| Component        | Technology |
-| ---------------- | ---------- |
-| Object Detection | YOLOv8     |
-| Computer Vision  | OpenCV     |
-
 ---
 
 ## User Roles & Responsibilities
@@ -121,8 +97,30 @@
 * **Technician (ช่าง)**
   รับงานแจ้งซ่อม, อัปเดตสถานะการทำงาน
 
-* **Security Guard (รปภ.)**
-  ตรวจสอบการแจ้งเตือนจาก AI, บันทึก Log การเข้า-ออก
+---
+
+## 🌐 Live Demo
+สามารถเข้าทดลองใช้งานระบบ Web Dashboard ที่ Deploy ไว้ได้ที่:
+👉 [ใส่ลิงก์ Live Demo ของคุณที่นี่]
+
+---
+
+## 🔑 Account Access (สำหรับอาจารย์ผู้สอน)
+บัญชีจำลองสำหรับเข้าทดสอบระบบตาม Role ต่างๆ (เพื่อความปลอดภัย ข้อมูล Environment Variables `(.env)` ได้แนบส่งแยกในระบบ Assignment แล้ว):
+
+| Role | Username / Email | Password |
+| :--- | :--- | :--- |
+| **Admin / Juristic** | admin | 123456 |
+| **Resident** | 333 | nnnnnn |
+| **Technician** | t | tttttt |
+
+---
+
+## 🚀 Local Setup & API Documentation
+
+สำหรับวิธีการติดตั้ง การรันโปรเจกต์บนเครื่อง Local (ทั้งฝั่ง Web, Mobile และ Backend) การตั้งค่า Environment Variables `(.env)` รวมถึงรายละเอียดของ API Endpoints ทั้งหมด สามารถดูคู่มือฉบับเต็มได้ที่ลิงก์ด้านล่างนี้:
+
+👉 **[อ่านคู่มือการติดตั้งและตั้งค่าระบบ (Setup & API Guide)](./SETUP_GUIDE.md)**
 
 ---
 
@@ -146,12 +144,15 @@
 4. [Presentation Slide #4 GUI & CLI](https://www.canva.com/design/DAG_5phXnt4/Bjl36ShquvO2duLYC4grOg/view?utm_content=DAG_5phXnt4&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h79ed3928ff)
 5. [Presentation Slide #5 Mapping & Facade](https://www.canva.com/design/DAHAqaXcgHg/TXma4wYU04RRrjVmf9jwjQ/view?utm_content=DAHAqaXcgHg&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=hb8cfb31952)
 6. [Presentation Slide #6 Implement User / Login](https://www.canva.com/design/DAHBZGMB-Dg/04PgYhR3vkNhaxhjUTm5CQ/view?utm_content=DAHBZGMB-Dg&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=hd5be665360)
-7. [Presentation Slide #7 Future Plans](https://canva.link/8tel1knf3mwrjtu)
+7. [Presentation Slide #7 Future Plans](https://canva.link/fqr9bm2141u0ui5)
+8. [Presentation Slide #8 Final Presentation](https://canva.link/t30dn1q4l9czbvi)
 
 ---
 
 ## Presentation History
 
 - February 2, 2026 (Presentation Slide 1 - 4)
+- April 27, 2026 (Presentation Slide 5 - 7)
+- May 18, 2026 (Presentation Slide 8)
 
 > *Condovenient – Smart Management for Smart Communities*
