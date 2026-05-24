@@ -49,6 +49,9 @@
 | 2026-02-01 | UI/UX Design | ออกแบบ GUI & CLI | Figma | Done |
 | 2026-02-08 | Requirement -> Implement | ทบทวนด้วยการ Mapping & Facade Design Pattern | Canva | Done |
 | 2026-02-09 | Project Management | วางแผนและกำหนดการทำงานของแต่ละคน | Jira | Done |
+| 2026-02-15 | Project Setup (Web) | สร้างโครงสร้างโปรเจกต์ Web Dashboard และตั้งค่าเครื่องมือพื้นฐาน | React.js, Vite, Tailwind CSS | Done |
+| 2026-03 - 2026-05 | Frontend Implementation | ทำหน้า Web Dashboard สำหรับจัดการข้อมูลต่างๆ ของนิติบุคคลและเชื่อม Backend | React.js, Firebase | Done |
+| 2026-05-24 | Final Submission Prep. | จัดการการส่ง submit ครั้งสุดท้าย | GitHub | Done |
 
 
 ### Name: ธนบดี สุดแดน
