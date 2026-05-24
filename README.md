@@ -143,6 +143,12 @@
 
 ---
 
+## Design
+
+[Design](https://canva.link/1lj0uoej23erl20)
+
+---
+
 ## Presentation History
 
 - February 2, 2026 (Presentation Slide 1 - 4)
