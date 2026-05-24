@@ -30,12 +30,16 @@
 
 ### Name: ฉัตรชัย สีคราม
 **Student ID:** 6610685064  
-**Role:** Backend Developer
+**Role:** Backend Developer & Frontend Developer (Web - Technician System)
 
 | Date | Task | Description | Tools / Tech | Status |
 |------|------|------------|-------------|--------|
 | 2026-01-15 | Backend API | ออกแบบ REST API สำหรับระบบแจ้งซ่อม | Node.js, Express | Done |
 | 2026-01-18 | Database | ออกแบบ schema ตาราง maintenance | PostgreSQL | Done |
+| 2026-02-01 | UI/UX Design | ออกแบบ GUI | Figma | Done |
+| 2026-05-16 | Repair & Staff Backend | พัฒนา Repair Request, Staff API และ Technician endpoints | Node.js, Express, PostgreSQL | Done |
+| 2026-05-19 | Notification Backend | แก้ไขและเพิ่ม FCM push notification | Node.js, Firebase | Done |
+| 2026-05-20 | Technician Web (Frontend) | พัฒนาหน้า Technician Dashboard ครบวงจร (layout, MyJobs, notification, rating) | React.js, Firebase | Done |
 
 
 ### Name: ชิติพัทธ์ ตากตำรงค์กุล
