@@ -67,17 +67,9 @@ cd condovenient_backend
 # 2. ติดตั้ง Dependencies
 npm install
 
-# 3. สร้างไฟล์ .env จากตัวอย่าง
-cp .env.example .env
+# 4. วาง firebase-key.json ในโฟลเดอร์ src/config/
 
-# 4. แก้ไขไฟล์ .env ใส่ Firebase Keys
-# - FIREBASE_PROJECT_ID
-# - FIREBASE_PRIVATE_KEY
-# - FIREBASE_CLIENT_EMAIL
-
-# 5. วาง firebase-key.json ในโฟลเดอร์ src/config/
-
-# 6. รันเซิร์ฟเวอร์
+# 5. รันเซิร์ฟเวอร์
 npm start           # Production
 npm run dev         # Development (ใช้ nodemon)
 ```
@@ -88,13 +80,15 @@ npm run dev         # Development (ใช้ nodemon)
 # 1. เปลี่ยนไปที่โฟลเดอร์ Web
 cd web_side
 
-# 2. ติดตั้ง Dependencies
+# 2.สร้างไฟล์ .env
+
+# 3. ติดตั้ง Dependencies
 npm install
 
-# 3. รันพัฒนาเซิร์ฟเวอร์
+# 4. รันพัฒนาเซิร์ฟเวอร์
 npm run dev
 
-# 4. สร้าง Build สำหรับ Production
+# 5. สร้าง Build สำหรับ Production
 npm run build
 ```
 
