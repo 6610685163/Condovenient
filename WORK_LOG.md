@@ -25,6 +25,7 @@
 | 2026-04-05 | Repair pages (frontend) | ทำหน้า Repair(mobile) | flutter | Done |
 | 2026-04-06 | Fees pages (frontend) | ทำหน้า Fees(mobile) | flutter | Done |
 | 2026-04-07 | Scheduling UI | ทำ scheduling UI(mobile) | flutter | Done |
+| 2026-05-13 | Frontend Implementation(mobile) | แก้ไขปรับแต่ง UI เป็นเวอร์ชั่นใหม่ | flutter | Done |
 
 
 
